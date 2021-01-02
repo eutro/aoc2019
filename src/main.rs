@@ -1,9 +1,9 @@
-use std::io;
 mod days;
+mod intcode;
 
-const DAY_COUNT: u32 = 1;
-const DAYS: [fn() -> io::Result<()>; DAY_COUNT as usize] = [
-    days::day1::run
+const DAY_COUNT: u32 = 2;
+const DAYS: [fn(); DAY_COUNT as usize] = [
+    days::day1::run, days::day2::run
 ];
 
 fn run_day(day: u32) {
@@ -11,7 +11,7 @@ fn run_day(day: u32) {
         panic!("Day out of bounds: {}", day)
     }
     println!("Day {}:", day);
-    DAYS[(day - 1) as usize]().expect("IO error during day");
+    DAYS[(day - 1) as usize]();
 }
 
 fn main() {

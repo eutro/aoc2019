@@ -1,4 +1,3 @@
-use std::io;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::BufRead;
@@ -16,19 +15,17 @@ fn module_fuel_recursive(mass: i32) -> i32 {
     total
 }
 
-pub fn run() -> io::Result<()> {
-    let f = File::open("input/1.txt")?;
+pub fn run() {
+    let f = File::open("input/1.txt").expect("Error reading file");
     let reader = BufReader::new(f);
 
     let mut fuel = 0;
     let mut fuel_recursive = 0;
     for line in reader.lines() {
-        let mass = line?.parse::<i32>().unwrap();
+        let mass = line.unwrap().parse::<i32>().unwrap();
         fuel += module_fuel(mass);
         fuel_recursive += module_fuel_recursive(mass);
     }
     println!("Fuel: {}", fuel);
     println!("Recursively: {}", fuel_recursive);
-
-    Ok(())
 }
