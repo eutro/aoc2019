@@ -1,6 +1,6 @@
 use std::vec::Vec;
-use std::path::Path;
-use std::fs;
+use std::io::BufRead;
+use std::io;
 
 #[derive(Debug)]
 pub struct Program {
@@ -30,16 +30,23 @@ enum Cause {
 }
 
 impl Program {
-    pub fn read<P: AsRef<Path>>(path: P) -> Program {
+    pub fn read<R: BufRead>(rd: &mut R) -> Program {
+        let mut s: String = String::new();
+        rd.read_line(&mut s).expect("Error reading program");
         Program {
-            instructions:
-            fs::read_to_string(path).expect("Error reading file")
+            instructions: s
                 .trim()
                 .split(',')
                 .map(|s| s.parse::<i32>()
                      .unwrap_or_else(|e| panic!("Intcode program must be made up of, well, ints, not \"{}\": {}", s, e)))
                 .collect()
         }
+    }
+
+    pub fn from_stdin() -> Program {
+        let stdin = io::stdin();
+        let mut lock = stdin.lock();
+        Program::read(&mut lock)
     }
 }
 

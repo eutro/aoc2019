@@ -1,7 +1,7 @@
 use aoc::intcode as ic;
 
 pub fn main() {
-    let program = ic::Program::read("input/2.txt");
+    let program = ic::Program::from_stdin();
     let mut vm = ic::VM::of(&program);
     vm.mem[1] = 12;
     vm.mem[2] = 2;
