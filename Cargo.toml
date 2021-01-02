@@ -5,3 +5,6 @@ authors = ["eutro"]
 edition = "2018"
 
 [dependencies]
+
+[lib]
+name = "aoc"

@@ -1,6 +1,6 @@
-use crate::intcode as ic;
+use aoc::intcode as ic;
 
-pub fn run() {
+pub fn main() {
     let program = ic::Program::read("input/2.txt");
     let mut vm = ic::VM::of(&program);
     vm.mem[1] = 12;

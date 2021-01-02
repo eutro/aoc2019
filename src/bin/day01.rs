@@ -15,7 +15,7 @@ fn module_fuel_recursive(mass: i32) -> i32 {
     total
 }
 
-pub fn run() {
+pub fn main() {
     let f = File::open("input/1.txt").expect("Error reading file");
     let reader = BufReader::new(f);
 
