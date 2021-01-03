@@ -1,14 +1,18 @@
 use std::io;
 use std::io::BufRead;
 
-fn module_fuel(mass: i32) -> i32 { (mass / 3) - 2 }
+fn module_fuel(mass: i32) -> i32 {
+    (mass / 3) - 2
+}
 
 fn module_fuel_recursive(mass: i32) -> i32 {
     let mut total = 0;
     let mut last_mass = mass;
     loop {
         last_mass = module_fuel(last_mass);
-        if last_mass < 0 { break };
+        if last_mass < 0 {
+            break;
+        };
         total += last_mass;
     }
     total
