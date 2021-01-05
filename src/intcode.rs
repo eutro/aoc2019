@@ -30,11 +30,11 @@ impl Program {
         line.parse::<Program>()
     }
 
-    pub fn as_fn(&self) -> impl Fn(Vec<Int>) -> Vec<Int> + '_ {
+    pub fn make_fn(self) -> impl Fn(Vec<Int>) -> Vec<Int> {
         move |i| {
             let mut inputs = i.iter();
             let mut out: Vec<Int> = Vec::new();
-            VM::of(self)
+            VM::of(&self)
                 .with_stdin(|| inputs
                     .next()
                     .map(|i| *i)

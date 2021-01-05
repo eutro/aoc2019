@@ -1,8 +1,7 @@
 use aoc::intcode::{Int, Program};
 
 fn main() {
-    let program = Program::from_stdin().unwrap();
-    let test = program.as_fn();
+    let test = Program::from_stdin().unwrap().make_fn();
     let non_zero = test(vec![1])
         .iter()
         .map(|i| *i)
