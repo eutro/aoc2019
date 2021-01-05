@@ -1,8 +1,8 @@
-use aoc::intcode as ic;
+use aoc::intcode::{Program, VM};
 
 pub fn main() {
-    let program = ic::Program::from_stdin();
-    let mut vm = ic::VM::of(&program);
+    let program = Program::from_stdin().unwrap();
+    let mut vm = VM::of(&program);
     vm.mem[1] = 12;
     vm.mem[2] = 2;
     vm.run().unwrap();
@@ -10,7 +10,7 @@ pub fn main() {
 
     for noun in 0..100 {
         for verb in 0..100 {
-            vm = ic::VM::of(&program);
+            vm = VM::of(&program);
             vm.mem[1] = noun;
             vm.mem[2] = verb;
             if vm.run().is_ok() && vm.mem[0] == 19690720 {
