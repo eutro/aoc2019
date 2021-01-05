@@ -4,7 +4,6 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 use std::vec::Vec;
 
-use crate::intcode::Error::MemoryOutOfBounds;
 use crate::numbers::DigitIterable;
 
 pub type Int = i64;
@@ -225,7 +224,7 @@ impl<I: FnMut() -> VMResult<Int>, O: FnMut(Int) -> VMResult<()>> VM<I, O> {
 
     fn jump(&mut self, to: Int) -> VMResult<()> {
         if to < 0 || to as usize >= usize::MAX {
-            Err(MemoryOutOfBounds(to))
+            Err(Error::MemoryOutOfBounds(to))
         } else {
             self.insn = to as usize;
             Ok(())
