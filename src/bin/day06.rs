@@ -67,7 +67,8 @@ fn main() {
 
     let mut jumps = 1;
     while !q.is_empty() {
-        if q.iter()
+        for obj in q
+            .iter()
             .map(|el|
                 orbiting_map
                     .get(&el)
@@ -77,14 +78,13 @@ fn main() {
                         .get(&el)
                         .into_iter()))
             .flatten()
-            .map(|e| *e)
-            .filter(|e| visited.insert(*e))
-            .filter(|e| tq.push_back(*e) == ())
-            .find(|e| *e == target)
-            .is_some()
         {
-            println!("Jumps: {}", jumps);
-            return;
+            if *obj == target {
+                println!("Jumps: {}", jumps);
+                return;
+            }
+            if !visited.insert(*obj) { continue; };
+            tq.push_back(*obj);
         }
         swap(&mut q, &mut tq);
         jumps += 1;
