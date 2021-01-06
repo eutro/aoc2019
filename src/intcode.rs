@@ -253,8 +253,6 @@ impl<I: FnMut() -> VMResult<Int>, O: FnMut(Int) -> VMResult<()>> VM<I, O> {
                 let i = self.get(modes)?;
                 (self.stdout)(i)?
             }
-
-            Insn::End => return Ok(false),
             Insn::JumpIfTrue => {
                 let pred = self.get(modes)?;
                 let to = self.get(modes)?;
@@ -285,6 +283,8 @@ impl<I: FnMut() -> VMResult<Int>, O: FnMut(Int) -> VMResult<()>> VM<I, O> {
                 };
                 self.set(modes, val)?;
             }
+
+            Insn::End => return Ok(false),
         }
         Ok(true)
     }
