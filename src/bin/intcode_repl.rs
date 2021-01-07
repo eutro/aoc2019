@@ -1,6 +1,6 @@
 use std::io::{BufRead, stdin, stdout, Write};
 
-use aoc::intcode::{Program, VM, Int};
+use aoc::intcode::{Program, VM, Int, State};
 
 fn main() {
     loop {
@@ -12,28 +12,35 @@ fn main() {
             continue;
         }
         let mut printed = false;
-        let mut vm = VM::of(&program.unwrap())
-            .with_stdout(|i| {
-                print!("{}", i);
-                printed = true;
-                Ok(())
-            })
-            .with_stdin(|| {
-                print!("> ");
-                stdout().flush().unwrap();
-                let mut line = String::new();
-                stdin().lock().read_line(&mut line).unwrap();
-                Ok(line.trim().parse::<Int>().unwrap())
-            });
-        let result = vm.run();
-        if result.is_err() {
-            eprintln!("Error running Intcode program: {:?}", result.unwrap_err());
-        } else {
-            let mem = vm.mem.clone();
-            if printed {
-                println!();
-            } else {
-                println!("{:?}", mem);
+        let mut vm = VM::of(&program.unwrap());
+        loop {
+            match vm.run() {
+                Err(e) => {
+                    eprintln!("Error running Intcode program: {:?}", e);
+                    break;
+                }
+                Ok(State::AwaitingInput) => {
+                    print!("> ");
+                    stdout().flush().unwrap();
+                    let stdin = stdin();
+                    let mut line = String::new();
+                    stdin.lock().read_line(&mut line).unwrap();
+                    match line.trim().parse::<Int>() {
+                        Ok(v) => vm.input(v),
+                        Err(e) => eprintln!("{:?}", e),
+                    }
+                }
+                Ok(State::Outputting(i)) => {
+                    printed = true;
+                    println!("{}", i);
+                }
+                Ok(State::Finished) => {
+                    if !printed {
+                        println!("{:?}", vm.mem);
+                    }
+                    break;
+                }
+                Ok(_) => (),
             }
         }
     }

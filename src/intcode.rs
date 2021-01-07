@@ -1,14 +1,17 @@
+use std::collections::VecDeque;
 use std::fmt::{self, Debug, Formatter};
 use std::io::{self, BufRead, stdin};
 use std::num::ParseIntError;
 use std::str::FromStr;
 use std::vec::Vec;
 
+use itertools::Itertools;
+
 use crate::numbers::DigitIterable;
 
 pub type Int = i64;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Program {
     instructions: Vec<Int>,
 }
@@ -31,20 +34,11 @@ impl Program {
 
     pub fn make_fn(self) -> impl Fn(Vec<Int>) -> Vec<Int> {
         move |i| {
-            let mut inputs = i.iter();
-            let mut out: Vec<Int> = Vec::new();
-            VM::of(&self)
-                .with_stdin(|| inputs
-                    .next()
-                    .map(|i| *i)
-                    .ok_or(Error::UnsupportedOperation))
-                .with_stdout(|i| {
-                    out.push(i);
-                    Ok(())
-                })
-                .run()
-                .unwrap();
-            out
+            let mut vm = VM::of(&self);
+            for x in i {
+                vm.input(x);
+            }
+            vm.collect_vec()
         }
     }
 }
@@ -62,6 +56,14 @@ impl FromStr for Program {
             .collect::<Result<Vec<Int>, Self::Err>>()?;
         Ok(Program { instructions })
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum State {
+    AwaitingInput,
+    Outputting(Int),
+    Continue,
+    Finished,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -132,46 +134,23 @@ impl Mode {
     }
 }
 
-pub struct VM<I: FnMut() -> VMResult<Int>, O: FnMut(Int) -> VMResult<()>> {
+pub struct VM {
     pub mem: Vec<Int>,
-    pub insn: usize,
-    stdin: I,
-    stdout: O,
+    insn: usize,
+    inbuf: VecDeque<Int>,
 }
 
-impl VM<fn() -> VMResult<Int>, fn(Int) -> VMResult<()>> {
+impl VM {
     pub fn of(program: &Program) -> Self {
         VM {
             mem: program.instructions.clone(),
             insn: 0,
-            stdin: || {
-                Err(Error::UnsupportedOperation)
-            },
-            stdout: |i| {
-                print!("{}", i);
-                Ok(())
-            },
-        }
-    }
-}
-
-impl<I: FnMut() -> VMResult<Int>, O: FnMut(Int) -> VMResult<()>> VM<I, O> {
-    pub fn with_stdin<NewI: FnMut() -> VMResult<i64>>(self, stdin: NewI) -> VM<NewI, O> {
-        VM {
-            mem: self.mem,
-            insn: self.insn,
-            stdin,
-            stdout: self.stdout,
+            inbuf: VecDeque::new(),
         }
     }
 
-    pub fn with_stdout<NewO: FnMut(Int) -> VMResult<()>>(self, stdout: NewO) -> VM<I, NewO> {
-        VM {
-            mem: self.mem,
-            insn: self.insn,
-            stdin: self.stdin,
-            stdout,
-        }
+    pub fn input(&mut self, input: Int) {
+        self.inbuf.push_back(input);
     }
 
     fn peek(&self) -> VMResult<Int> {
@@ -231,7 +210,7 @@ impl<I: FnMut() -> VMResult<Int>, O: FnMut(Int) -> VMResult<()>> VM<I, O> {
         }
     }
 
-    fn advance(&mut self) -> VMResult<bool> {
+    fn advance(&mut self) -> VMResult<State> {
         let modes =
             &mut ((self.peek()? / 100) as u32)
                 .reverse_digits()
@@ -246,12 +225,17 @@ impl<I: FnMut() -> VMResult<Int>, O: FnMut(Int) -> VMResult<()>> VM<I, O> {
                 self.set(modes, prod)?
             }
             Insn::Input => {
-                let i = (self.stdin)()?;
-                self.set(modes, i)?
+                let input = self.inbuf.pop_front();
+                if input.is_some() {
+                    self.set(modes, input.unwrap())?
+                } else {
+                    self.insn -= 1;
+                    return Ok(State::AwaitingInput);
+                }
             }
             Insn::Output => {
                 let i = self.get(modes)?;
-                (self.stdout)(i)?
+                return Ok(State::Outputting(i));
             }
             Insn::JumpIfTrue => {
                 let pred = self.get(modes)?;
@@ -284,19 +268,42 @@ impl<I: FnMut() -> VMResult<Int>, O: FnMut(Int) -> VMResult<()>> VM<I, O> {
                 self.set(modes, val)?;
             }
 
-            Insn::End => return Ok(false),
+            Insn::End => {
+                self.insn -= 1; // keep the program terminated
+                return Ok(State::Finished)
+            },
         }
-        Ok(true)
+        Ok(State::Continue)
     }
 
-    pub fn run(&mut self) -> ExecResult<()> {
-        while self.advance()
-            .map_err(|error| ExecError {
-                mem: self.mem.clone(),
-                error,
-                insn: self.insn - 1,
-            })? {}
-        Ok(())
+    pub fn run(&mut self) -> ExecResult<State> {
+        loop {
+            match self.advance()
+                .map_err(|error| ExecError {
+                    mem: self.mem.clone(),
+                    error,
+                    insn: self.insn - 1,
+                })? {
+                State::Continue => (),
+                state => return Ok(state)
+            }
+        }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.peek().unwrap_or(99) % 100 == 99
+    }
+}
+
+impl Iterator for VM {
+    type Item = Int;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.run() {
+            Ok(State::Outputting(i)) => Some(i),
+            Ok(_) => None,
+            Err(_) => None,
+        }
     }
 }
 
@@ -318,7 +325,7 @@ fn format_mem(f: &mut Formatter, mem: &Vec<Int>, insn: usize) -> fmt::Result {
     Ok(())
 }
 
-impl<I: FnMut() -> VMResult<Int>, O: FnMut(Int) -> VMResult<()>> Debug for VM<I, O> {
+impl Debug for VM {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         format_mem(f, &self.mem, self.insn)
     }
