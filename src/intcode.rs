@@ -5,8 +5,6 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 use std::vec::Vec;
 
-use itertools::Itertools;
-
 use crate::numbers::DigitIterable;
 
 pub type Int = i64;
@@ -33,12 +31,20 @@ impl Program {
     }
 
     pub fn make_fn(self) -> impl Fn(Vec<Int>) -> Vec<Int> {
-        move |i| {
+        move |input| {
             let mut vm = VM::of(&self);
-            for x in i {
-                vm.input(x);
+            for i in input {
+                vm.input(i);
             }
-            vm.collect_vec()
+            let mut ret = Vec::new();
+            loop {
+                match vm.next_state() {
+                    Ok(State::Outputting(i)) => ret.push(i),
+                    Ok(State::Finished) => return ret,
+                    Ok(s) => panic!("Unexpected state: {:?}", s),
+                    Err(e) => panic!("{:?}", e)
+                }
+            }
         }
     }
 }
@@ -62,7 +68,6 @@ impl FromStr for Program {
 pub enum State {
     AwaitingInput,
     Outputting(Int),
-    Continue,
     Finished,
 }
 
@@ -85,7 +90,7 @@ pub struct ExecError {
 type VMResult<T> = Result<T, Error>;
 type ExecResult<T> = Result<T, ExecError>;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Insn {
     Add,
     Mul,
@@ -149,6 +154,28 @@ impl VM {
         }
     }
 
+    pub fn next_state(&mut self) -> ExecResult<State> {
+        loop {
+            match self.advance()
+                .map_err(|error| ExecError {
+                    mem: self.mem.clone(),
+                    error,
+                    insn: self.insn - 1,
+                })? {
+                None => (),
+                Some(state) => return Ok(state)
+            }
+        }
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.peek()
+            .map(|o| Insn::of((o % 100) as u8)
+                .unwrap_or(Insn::End))
+            .unwrap_or(Insn::End)
+            == Insn::End
+    }
+
     pub fn input(&mut self, input: Int) {
         self.inbuf.push_back(input);
     }
@@ -210,7 +237,7 @@ impl VM {
         }
     }
 
-    fn advance(&mut self) -> VMResult<State> {
+    fn advance(&mut self) -> VMResult<Option<State>> {
         let modes =
             &mut ((self.peek()? / 100) as u32)
                 .reverse_digits()
@@ -230,12 +257,12 @@ impl VM {
                     self.set(modes, input.unwrap())?
                 } else {
                     self.insn -= 1;
-                    return Ok(State::AwaitingInput);
+                    return Ok(Some(State::AwaitingInput));
                 }
             }
             Insn::Output => {
                 let i = self.get(modes)?;
-                return Ok(State::Outputting(i));
+                return Ok(Some(State::Outputting(i)));
             }
             Insn::JumpIfTrue => {
                 let pred = self.get(modes)?;
@@ -270,40 +297,10 @@ impl VM {
 
             Insn::End => {
                 self.insn -= 1; // keep the program terminated
-                return Ok(State::Finished)
-            },
-        }
-        Ok(State::Continue)
-    }
-
-    pub fn run(&mut self) -> ExecResult<State> {
-        loop {
-            match self.advance()
-                .map_err(|error| ExecError {
-                    mem: self.mem.clone(),
-                    error,
-                    insn: self.insn - 1,
-                })? {
-                State::Continue => (),
-                state => return Ok(state)
+                return Ok(Some(State::Finished));
             }
         }
-    }
-
-    pub fn is_finished(&self) -> bool {
-        self.peek().unwrap_or(99) % 100 == 99
-    }
-}
-
-impl Iterator for VM {
-    type Item = Int;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.run() {
-            Ok(State::Outputting(i)) => Some(i),
-            Ok(_) => None,
-            Err(_) => None,
-        }
+        Ok(None)
     }
 }
 

@@ -32,9 +32,8 @@ fn main() {
                 let mut deadlock_check = true;
                 for accelerator in 0..ACCELERATOR_COUNT {
                     loop {
-                        let state = vms.get_mut(accelerator).unwrap().run().unwrap();
+                        let state = vms.get_mut(accelerator).unwrap().next_state().unwrap();
                         match state {
-                            State::AwaitingInput => break,
                             State::Outputting(i) => {
                                 let next_vm = vms.get_mut((accelerator + 1) % ACCELERATOR_COUNT).unwrap();
                                 if next_vm.is_finished() {
@@ -43,9 +42,7 @@ fn main() {
                                 next_vm.input(i);
                                 deadlock_check = false;
                             },
-                            State::Continue => {
-                                deadlock_check = false;
-                            },
+                            State::AwaitingInput => break,
                             State::Finished => break,
                         }
                     }

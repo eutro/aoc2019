@@ -14,7 +14,7 @@ fn main() {
         let mut printed = false;
         let mut vm = VM::of(&program.unwrap());
         loop {
-            match vm.run() {
+            match vm.next_state() {
                 Err(e) => {
                     eprintln!("Error running Intcode program: {:?}", e);
                     break;
@@ -40,7 +40,6 @@ fn main() {
                     }
                     break;
                 }
-                Ok(_) => (),
             }
         }
     }
