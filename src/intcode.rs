@@ -30,7 +30,7 @@ impl Program {
         line.parse::<Program>()
     }
 
-    pub fn make_fn(self) -> impl Fn(Vec<Int>) -> Vec<Int> {
+    pub fn into_fn(self) -> impl Fn(Vec<Int>) -> Vec<Int> {
         move |input| {
             let mut vm = VM::of(&self);
             for i in input {
@@ -101,6 +101,7 @@ pub enum Insn {
     JumpIfFalse,
     LessThan,
     Equals,
+    SetBase,
 }
 
 impl Insn {
@@ -114,6 +115,7 @@ impl Insn {
             6 => Insn::JumpIfFalse,
             7 => Insn::LessThan,
             8 => Insn::Equals,
+            9 => Insn::SetBase,
 
             99 => Insn::End,
 
@@ -126,6 +128,7 @@ impl Insn {
 pub enum Mode {
     Position,
     Immediate,
+    Relative,
 }
 
 impl Mode {
@@ -133,6 +136,7 @@ impl Mode {
         Ok(match digit {
             0 => Mode::Position,
             1 => Mode::Immediate,
+            2 => Mode::Relative,
 
             d => return Err(Error::UnrecognisedMode(d))
         })
@@ -143,6 +147,7 @@ pub struct VM {
     pub mem: Vec<Int>,
     insn: usize,
     inbuf: VecDeque<Int>,
+    relbase: Int,
 }
 
 impl VM {
@@ -151,6 +156,7 @@ impl VM {
             mem: program.instructions.clone(),
             insn: 0,
             inbuf: VecDeque::new(),
+            relbase: 0,
         }
     }
 
@@ -203,26 +209,41 @@ impl VM {
         let v = self.poll()?;
         Ok(match modes.next().unwrap()? {
             Mode::Position => {
-                if v < 0 || v as usize >= self.mem.len() {
+                if v < 0 {
                     return Err(Error::MemoryOutOfBounds(v));
                 }
                 self.maybe_resize(v as usize);
                 self.mem[v as usize]
             }
             Mode::Immediate => v,
+            Mode::Relative => {
+                let t = self.relbase + v;
+                if t < 0 {
+                    return Err(Error::MemoryOutOfBounds(v));
+                }
+                self.maybe_resize(t as usize);
+                self.mem[t as usize]
+            }
         })
     }
 
     fn set<Iter: Iterator<Item=VMResult<Mode>>>(&mut self, modes: &mut Iter, val: Int) -> VMResult<()> {
-        let idx = self.poll()?;
+        let v = self.poll()?;
         Ok(match modes.next().unwrap()? {
             Mode::Position => {
-                if idx < 0 || idx as usize >= usize::MAX {
-                    return Err(Error::MemoryOutOfBounds(idx));
-                } else {
-                    self.maybe_resize(idx as usize);
-                    self.mem[idx as usize] = val;
+                if v < 0 {
+                    return Err(Error::MemoryOutOfBounds(v));
                 }
+                self.maybe_resize(v as usize);
+                self.mem[v as usize] = val;
+            }
+            Mode::Relative => {
+                let t = self.relbase + v;
+                if t < 0 {
+                    return Err(Error::MemoryOutOfBounds(v));
+                }
+                self.maybe_resize(t as usize);
+                self.mem[t as usize] = val;
             }
             mode => return Err(Error::UnsupportedSet(mode))
         })
@@ -293,6 +314,10 @@ impl VM {
                     0
                 };
                 self.set(modes, val)?;
+            }
+            Insn::SetBase => {
+                let adj = self.get(modes)?;
+                self.relbase += adj;
             }
 
             Insn::End => {

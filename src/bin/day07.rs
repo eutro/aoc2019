@@ -6,7 +6,7 @@ const ACCELERATOR_COUNT: usize = 5;
 
 fn main() {
     let program = Program::from_stdin().unwrap();
-    let acs = program.clone().make_fn();
+    let acs = program.clone().into_fn();
     println!("Max: {}", vec![0, 1, 2, 3, 4]
         .iter()
         .permutations(ACCELERATOR_COUNT)
