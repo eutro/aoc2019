@@ -68,9 +68,7 @@ fn main() {
 
     let (pos, mut detectable) =
         asteroids.iter()
-            .map(|station| {
-                (*station, get_detectable(station, &asteroids, width, height))
-            })
+            .map(|station| (*station, get_detectable(station, &asteroids, width, height)))
             .max_by_key(|(_, visible)| visible.len())
             .unwrap();
     let (sx, sy) = pos;
@@ -96,8 +94,9 @@ fn main() {
                      tx * 100 + ty);
             return;
         } else {
+            // there's more than 200 visible to start so this never gets called
             vaporized += detectable.len();
-            for asteroid in dbg!(detectable) {
+            for asteroid in detectable {
                 asteroids.remove(&asteroid);
             }
         }
