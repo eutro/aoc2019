@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 itertools = "0.10.0"
+num = "0.3.1"
 
 [lib]
 name = "aoc"
