@@ -143,6 +143,7 @@ impl Mode {
     }
 }
 
+#[derive(Clone)]
 pub struct VM {
     pub mem: Vec<Int>,
     insn: usize,
