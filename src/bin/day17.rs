@@ -1,4 +1,4 @@
-use aoc::intcode::{Program, VM, Int};
+use aoc::intcode::{Program, VM};
 use itertools::Itertools;
 use aoc::util::DIRECTIONS;
 
