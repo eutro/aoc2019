@@ -187,6 +187,12 @@ impl VM {
         self.inbuf.push_back(input);
     }
 
+    pub fn input_ascii(&mut self, input: &str) {
+        for c in input.chars() {
+            self.input(c as Int);
+        }
+    }
+
     fn peek(&self) -> VMResult<Int> {
         self.mem
             .get(self.insn)
@@ -358,5 +364,20 @@ impl Debug for ExecError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}\n", self.error)?;
         format_mem(f, &self.mem, self.insn)
+    }
+}
+
+impl Iterator for VM {
+    type Item = Int;
+
+    fn next(&mut self) -> Option<Int> {
+        match self.next_state() {
+            Ok(s) => match s {
+                State::AwaitingInput => None,
+                State::Outputting(i) => Some(i),
+                State::Finished => None,
+            }
+            Err(_) => None
+        }
     }
 }
