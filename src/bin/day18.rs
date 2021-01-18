@@ -6,7 +6,7 @@ use priority_queue::PriorityQueue;
 use std::hash::Hash;
 use std::collections::HashSet;
 use aoc::util::DIRECTIONS;
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 enum Tile {
@@ -82,6 +82,12 @@ impl Index<(usize, usize)> for Vault {
     }
 }
 
+impl IndexMut<(usize, usize)> for Vault {
+    fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Self::Output {
+        &mut self.tiles[y][x]
+    }
+}
+
 impl From<Vec<Vec<Tile>>> for Vault {
     fn from(tiles: Vec<Vec<Tile>>) -> Self {
         Vault { tiles }
@@ -106,25 +112,13 @@ impl Debug for Vault {
     }
 }
 
-fn main() {
-    let stdin = stdin();
-    let vault: Vault = stdin
-        .lock()
-        .lines()
-        .map(|l| l
-            .unwrap()
-            .chars()
-            .map(Tile::of)
-            .collect_vec())
-        .collect_vec()
-        .into();
-
+fn find_shortest(vault: &Vault) -> i32 {
     let mut /* key queue */ kq = PriorityQueue::new();
     let pos = vault
         .iter()
-        .find(|(_, tile)| *tile == Tile::Entrance)
-        .unwrap()
-        .0;
+        .filter(|(_, tile)| *tile == Tile::Entrance)
+        .map(|(pos, _)| pos)
+        .collect_vec();
     let keys_remaining = vault
         .iter()
         .filter_map(|(_, tile)| match tile {
@@ -137,65 +131,101 @@ fn main() {
 
     let mut shortest_path = i32::MAX;
     while !kq.is_empty() {
-        let ((pos, keys_remaining), steps) = kq.pop().unwrap();
+        let ((positions, keys_remaining), steps) = kq.pop().unwrap();
 
         if keys_remaining.is_empty() {
             shortest_path = shortest_path.min(-steps);
             continue;
         }
 
-        // first find all possible keys, those are the neighbour nodes
-        let mut /* intersection */ iq = PriorityQueue::new();
-        iq.push(pos, steps);
-        let mut iseen = HashSet::new();
+        for (i, &pos) in positions.iter().enumerate() {
+            // first find all possible keys, those are the neighbour nodes
+            let mut /* intersection */ iq = PriorityQueue::new();
+            iq.push(pos, steps);
+            let mut iseen = HashSet::new();
 
-        while !iq.is_empty() {
-            let (pos, dist) = iq.pop().unwrap();
-            match vault[pos].key(&keys_remaining) {
-                Some(k) => {
-                    let mut kr = keys_remaining.clone();
-                    kr.remove(kr
-                        .iter()
-                        .position(|x| *x == k)
-                        .unwrap_or_else(|| panic!("Duplicate key {}, not in {:?}", k, kr)));
-                    let tup = (pos, kr);
-                    if !kseen.contains(&tup) {
-                        let dist = (*kq
-                            .get_priority(&tup)
-                            .unwrap_or(&i32::MIN))
-                            .max(dist);
-                        kq.push(tup, dist);
+            while !iq.is_empty() {
+                let (pos, dist) = iq.pop().unwrap();
+                match vault[pos].key(&keys_remaining) {
+                    Some(k) => {
+                        let mut kr = keys_remaining.clone();
+                        kr.remove(kr
+                            .iter()
+                            .position(|x| *x == k)
+                            .unwrap_or_else(|| panic!("Duplicate key {}, not in {:?}", k, kr)));
+                        if !kseen.contains(&kr) {
+                            let mut poses = positions.clone();
+                            poses[i] = pos;
+                            let tup = (poses, kr);
+                            let dist = (*kq
+                                .get_priority(&tup)
+                                .unwrap_or(&i32::MIN))
+                                .max(dist);
+                            kq.push(tup, dist);
+                        }
                     }
-                }
-                None => {
-                    // at an intersection, traverse to neighbour intersections
-                    for &dir in &DIRECTIONS {
-                        let mut mut_dist = dist;
-                        let mut mut_pos = dir.offset(pos);
-                        while vault[mut_pos].navigable(&keys_remaining) {
-                            mut_dist -= 1;
-                            if vault[mut_pos].key(&keys_remaining).is_some() || dir.turns()
-                                .iter()
-                                .map(|n| vault[n.offset(mut_pos)])
-                                .find(|t| t.navigable(&keys_remaining))
-                                .is_some() {
-                                // another intersection, add to queue, unless seen already
-                                if !iseen.contains(&mut_pos) {
-                                    iq.push(mut_pos, (*iq
-                                        .get_priority(&mut_pos)
-                                        .unwrap_or(&i32::MIN))
-                                        .max(mut_dist));
+                    None => {
+                        // at an intersection, traverse to neighbour intersections
+                        for &dir in &DIRECTIONS {
+                            let mut mut_dist = dist;
+                            let mut mut_pos = dir.offset(pos);
+                            while vault[mut_pos].navigable(&keys_remaining) {
+                                mut_dist -= 1;
+                                if vault[mut_pos].key(&keys_remaining).is_some() || dir.turns()
+                                    .iter()
+                                    .map(|n| vault[n.offset(mut_pos)])
+                                    .find(|t| t.navigable(&keys_remaining))
+                                    .is_some() {
+                                    // another intersection, add to queue, unless seen already
+                                    if !iseen.contains(&mut_pos) {
+                                        iq.push(mut_pos, (*iq
+                                            .get_priority(&mut_pos)
+                                            .unwrap_or(&i32::MIN))
+                                            .max(mut_dist));
+                                    }
+                                    break;
                                 }
-                                break;
+                                mut_pos = dir.offset(mut_pos);
                             }
-                            mut_pos = dir.offset(mut_pos);
                         }
                     }
                 }
+                iseen.insert(pos);
             }
-            iseen.insert(pos);
         }
-        kseen.insert((pos, keys_remaining));
+        kseen.insert(keys_remaining);
     }
-    println!("Shortest: {}", shortest_path);
+    shortest_path
+}
+
+fn main() {
+    let stdin = stdin();
+    let mut vault: Vault = stdin
+        .lock()
+        .lines()
+        .map(|l| l
+            .unwrap()
+            .chars()
+            .map(Tile::of)
+            .collect_vec())
+        .collect_vec()
+        .into();
+    println!("Shortest: {}", find_shortest(&vault));
+
+    let pos = vault
+        .iter()
+        .filter(|(_, tile)| *tile == Tile::Entrance)
+        .map(|(pos, _)| pos)
+        .next()
+        .unwrap();
+    vault[pos] = Tile::StoneWall;
+    for &dir in DIRECTIONS.iter() {
+        let offset = dir.offset(pos);
+        vault[offset] = Tile::StoneWall;
+        for &turn in &dir.turns() {
+            let corner = turn.offset(offset);
+            vault[corner] = Tile::Entrance;
+        }
+    }
+    println!("Shortest: {}", find_shortest(&vault));
 }
