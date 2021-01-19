@@ -11,12 +11,16 @@ pub enum Dir {
 }
 
 impl Dir {
-    pub fn offset<T: From<u8> + Add<Output=T> + Sub<Output=T>>(&self, (x, y): (T, T)) -> (T, T) {
+    pub fn offset<T: From<u8> + Add<Output=T> + Sub<Output=T>>(&self, pos: (T, T)) -> (T, T) {
+        self.offset_by(pos, 1.into())
+    }
+
+    pub fn offset_by<T: Add<Output=T> + Sub<Output=T>>(&self, (x, y): (T, T), by: T) -> (T, T) {
         match self {
-            Dir::North => (x, y + 1.into()),
-            Dir::South => (x, y - 1.into()),
-            Dir::West => (x - 1.into(), y),
-            Dir::East => (x + 1.into(), y),
+            Dir::North => (x, y + by),
+            Dir::South => (x, y - by),
+            Dir::West => (x - by, y),
+            Dir::East => (x + by, y),
         }
     }
 
