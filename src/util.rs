@@ -2,7 +2,7 @@ use std::ops::{Add, Sub};
 
 pub static DIRECTIONS: [Dir; 4] = [Dir::North, Dir::South, Dir::West, Dir::East];
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Dir {
     North = 1,
     South = 2,
