@@ -32,4 +32,13 @@ impl Dir {
             Dir::East => [Dir::South, Dir::North],
         }
     }
+
+    pub fn opposite(&self) -> Dir {
+        match self {
+            Dir::North => Dir::South,
+            Dir::South => Dir::North,
+            Dir::West => Dir::East,
+            Dir::East => Dir::West,
+        }
+    }
 }
