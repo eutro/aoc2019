@@ -1,4 +1,5 @@
 use std::ops::{Add, Sub};
+use std::str::FromStr;
 
 pub static DIRECTIONS: [Dir; 4] = [Dir::North, Dir::South, Dir::West, Dir::East];
 
@@ -40,5 +41,28 @@ impl Dir {
             Dir::West => Dir::East,
             Dir::East => Dir::West,
         }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Dir::North => "north",
+            Dir::South => "south",
+            Dir::West => "west",
+            Dir::East => "east",
+        }
+    }
+}
+
+impl FromStr for Dir {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "north" => Dir::North,
+            "south" => Dir::South,
+            "west" => Dir::West,
+            "east" => Dir::East,
+            _ => return Err(())
+        })
     }
 }

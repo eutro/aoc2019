@@ -1,8 +1,13 @@
 use std::io::{BufRead, stdin, stdout, Write};
 
 use aoc::intcode::{Program, VM, Int, State};
+use std::env;
 
 fn main() {
+    let ascii: bool = env::var("INTCODE_ASCII")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse()
+        .unwrap();
     loop {
         print!(">>> ");
         stdout().flush().unwrap();
@@ -20,19 +25,29 @@ fn main() {
                     break;
                 }
                 Ok(State::AwaitingInput) => {
-                    print!("> ");
-                    stdout().flush().unwrap();
+                    if !ascii {
+                        print!("> ");
+                        stdout().flush().unwrap();
+                    }
                     let stdin = stdin();
                     let mut line = String::new();
                     stdin.lock().read_line(&mut line).unwrap();
-                    match line.trim().parse::<Int>() {
-                        Ok(v) => vm.input(v),
-                        Err(e) => eprintln!("{:?}", e),
+                    if ascii {
+                        vm.input_ascii(&*line.into_boxed_str());
+                    } else {
+                        match line.trim().parse::<Int>() {
+                            Ok(v) => vm.input(v),
+                            Err(e) => eprintln!("{:?}", e),
+                        }
                     }
                 }
                 Ok(State::Outputting(i)) => {
                     printed = true;
-                    println!("{}", i);
+                    if ascii {
+                        print!("{}", i as u8 as char);
+                    } else {
+                        println!("{}", i);
+                    }
                 }
                 Ok(State::Finished) => {
                     if !printed {
