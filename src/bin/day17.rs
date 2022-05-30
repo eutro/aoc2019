@@ -1,13 +1,15 @@
-use aoc::intcode::{Program, VM};
+use crate::intcode::{Program, VM};
+use crate::io;
+use crate::util::DIRECTIONS;
 use itertools::Itertools;
-use aoc::util::DIRECTIONS;
 
 #[allow(unused)]
 fn display_ascii(img: &Vec<Vec<char>>) {
-    println!("{}", img.iter().map(|l| l.iter().join("")).join("\n"));
+    io::println!("{}", img.iter().map(|l| l.iter().join("")).join("\n"));
 }
 
-fn main() {
+#[no_mangle]
+pub fn day_17() {
     let ascii = Program::from_stdin().unwrap();
     let mut img = VM::of(&ascii)
         .map(|i| i as u8 as char)
@@ -29,10 +31,13 @@ fn main() {
             let mut intersection = true;
             for dir in &DIRECTIONS {
                 let (nx, ny) = dir.offset((x, y));
-                if nx < 0 || ny < 0 || *img
-                    .get(ny as usize)
-                    .and_then(|v| v.get(nx as usize))
-                    .unwrap_or(&'.') == '.'
+                if nx < 0
+                    || ny < 0
+                    || *img
+                        .get(ny as usize)
+                        .and_then(|v| v.get(nx as usize))
+                        .unwrap_or(&'.')
+                        == '.'
                 {
                     intersection = false;
                     break;
@@ -46,7 +51,7 @@ fn main() {
     }
 
     // display_ascii(&img);
-    println!("Alignment: {}", alignment);
+    io::println!("Alignment: {}", alignment);
 
     let mut vm = VM::of(&ascii);
     vm.mem[0] = 2;
@@ -93,5 +98,5 @@ fn main() {
     vm.input_ascii("L,12,L,12,L,10,R,10\n"); // B
     vm.input_ascii("L,10,L,10,R,8\n"); // C
     vm.input_ascii("n\n");
-    println!("Dust: {}", vm.last().unwrap());
+    io::println!("Dust: {}", vm.last().unwrap());
 }

@@ -1,11 +1,12 @@
-use std::fmt::{Display, Formatter, Debug};
-use std::fmt;
+use crate::io;
+use crate::io::{stdin, BufRead};
+use crate::util::DIRECTIONS;
 use itertools::Itertools;
-use std::io::{stdin, BufRead};
 use priority_queue::PriorityQueue;
-use std::hash::Hash;
 use std::collections::HashSet;
-use aoc::util::DIRECTIONS;
+use std::fmt;
+use std::fmt::{Debug, Display, Formatter};
+use std::hash::Hash;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -23,7 +24,11 @@ impl Tile {
             '#' => Tile::StoneWall,
             '.' => Tile::OpenPassage,
             '@' => Tile::Entrance,
-            _ => (if c.is_lowercase() { Tile::Key } else { Tile::Door })(c.to_ascii_uppercase()),
+            _ => (if c.is_lowercase() {
+                Tile::Key
+            } else {
+                Tile::Door
+            })(c.to_ascii_uppercase()),
         }
     }
 
@@ -39,7 +44,13 @@ impl Tile {
 
     fn key(&self, kr: &Vec<char>) -> Option<char> {
         match self {
-            Tile::Key(c) => if kr.contains(c) { Some(*c) } else { None },
+            Tile::Key(c) => {
+                if kr.contains(c) {
+                    Some(*c)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -47,13 +58,17 @@ impl Tile {
 
 impl Display for Tile {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            Tile::StoneWall => '#',
-            Tile::OpenPassage => '.',
-            Tile::Entrance => '@',
-            Tile::Key(c) => c.to_ascii_lowercase(),
-            Tile::Door(c) => *c,
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Tile::StoneWall => '#',
+                Tile::OpenPassage => '.',
+                Tile::Entrance => '@',
+                Tile::Key(c) => c.to_ascii_lowercase(),
+                Tile::Door(c) => *c,
+            }
+        )
     }
 }
 
@@ -63,14 +78,12 @@ struct Vault {
 }
 
 impl Vault {
-    fn iter(&self) -> impl Iterator<Item=((usize, usize), Tile)> + '_ {
-        self.tiles
-            .iter()
-            .enumerate()
-            .flat_map(|(y, line)| line
-                .iter()
+    fn iter(&self) -> impl Iterator<Item = ((usize, usize), Tile)> + '_ {
+        self.tiles.iter().enumerate().flat_map(|(y, line)| {
+            line.iter()
                 .enumerate()
-                .map(move |(x, &tile)| ((x, y), tile)))
+                .map(move |(x, &tile)| ((x, y), tile))
+        })
     }
 }
 
@@ -96,13 +109,11 @@ impl From<Vec<Vec<Tile>>> for Vault {
 
 impl Display for Vault {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self
-            .tiles
-            .iter()
-            .map(|l| l
-                .iter()
-                .join(""))
-            .join("\n"))
+        write!(
+            f,
+            "{}",
+            self.tiles.iter().map(|l| l.iter().join("")).join("\n")
+        )
     }
 }
 
@@ -123,7 +134,7 @@ fn find_shortest(vault: &Vault) -> i32 {
         .iter()
         .filter_map(|(_, tile)| match tile {
             Tile::Key(c) => Some(c),
-            _ => None
+            _ => None,
         })
         .collect_vec();
     kq.push((pos, keys_remaining), 0);
@@ -149,18 +160,16 @@ fn find_shortest(vault: &Vault) -> i32 {
                 match vault[pos].key(&keys_remaining) {
                     Some(k) => {
                         let mut kr = keys_remaining.clone();
-                        kr.remove(kr
-                            .iter()
-                            .position(|x| *x == k)
-                            .unwrap_or_else(|| panic!("Duplicate key {}, not in {:?}", k, kr)));
+                        kr.remove(
+                            kr.iter()
+                                .position(|x| *x == k)
+                                .unwrap_or_else(|| panic!("Duplicate key {}, not in {:?}", k, kr)),
+                        );
                         if !kseen.contains(&kr) {
                             let mut poses = positions.clone();
                             poses[i] = pos;
                             let tup = (poses, kr);
-                            let dist = (*kq
-                                .get_priority(&tup)
-                                .unwrap_or(&i32::MIN))
-                                .max(dist);
+                            let dist = (*kq.get_priority(&tup).unwrap_or(&i32::MIN)).max(dist);
                             kq.push(tup, dist);
                         }
                     }
@@ -171,17 +180,21 @@ fn find_shortest(vault: &Vault) -> i32 {
                             let mut mut_pos = dir.offset(pos);
                             while vault[mut_pos].navigable(&keys_remaining) {
                                 mut_dist -= 1;
-                                if vault[mut_pos].key(&keys_remaining).is_some() || dir.turns()
-                                    .iter()
-                                    .map(|n| vault[n.offset(mut_pos)])
-                                    .find(|t| t.navigable(&keys_remaining))
-                                    .is_some() {
+                                if vault[mut_pos].key(&keys_remaining).is_some()
+                                    || dir
+                                        .turns()
+                                        .iter()
+                                        .map(|n| vault[n.offset(mut_pos)])
+                                        .find(|t| t.navigable(&keys_remaining))
+                                        .is_some()
+                                {
                                     // another intersection, add to queue, unless seen already
                                     if !iseen.contains(&mut_pos) {
-                                        iq.push(mut_pos, (*iq
-                                            .get_priority(&mut_pos)
-                                            .unwrap_or(&i32::MIN))
-                                            .max(mut_dist));
+                                        iq.push(
+                                            mut_pos,
+                                            (*iq.get_priority(&mut_pos).unwrap_or(&i32::MIN))
+                                                .max(mut_dist),
+                                        );
                                     }
                                     break;
                                 }
@@ -198,19 +211,16 @@ fn find_shortest(vault: &Vault) -> i32 {
     shortest_path
 }
 
-fn main() {
+#[no_mangle]
+pub fn day_18() {
     let stdin = stdin();
     let mut vault: Vault = stdin
         .lock()
         .lines()
-        .map(|l| l
-            .unwrap()
-            .chars()
-            .map(Tile::of)
-            .collect_vec())
+        .map(|l| l.unwrap().chars().map(Tile::of).collect_vec())
         .collect_vec()
         .into();
-    println!("Shortest: {}", find_shortest(&vault));
+    io::println!("Shortest: {}", find_shortest(&vault));
 
     let pos = vault
         .iter()
@@ -227,5 +237,5 @@ fn main() {
             vault[corner] = Tile::Entrance;
         }
     }
-    println!("Shortest: {}", find_shortest(&vault));
+    io::println!("Shortest: {}", find_shortest(&vault));
 }

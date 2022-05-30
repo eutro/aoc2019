@@ -1,9 +1,10 @@
-use aoc::intcode::{Program, VM, State, Int};
-use std::collections::HashMap;
-use std::ops::{Add, AddAssign};
-use std::fmt::{Display, Formatter};
-use std::fmt;
+use crate::intcode::{Int, Program, State, VM};
+use crate::io;
 use num::traits::AsPrimitive;
+use std::collections::HashMap;
+use std::fmt;
+use std::fmt::{Display, Formatter};
+use std::ops::{Add, AddAssign};
 
 #[derive(Clone, Copy, Hash, Eq, PartialEq)]
 struct Vector {
@@ -15,7 +16,10 @@ impl Add for Vector {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Vector { x: self.x + rhs.x, y: self.y + rhs.y }
+        Vector {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
     }
 }
 
@@ -33,10 +37,14 @@ enum Colour {
 
 impl Display for Colour {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            Colour::Black => '.',
-            Colour::White => '#',
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Colour::Black => '.',
+                Colour::White => '#',
+            }
+        )
     }
 }
 
@@ -68,24 +76,28 @@ fn paint(program: &Program, painted: &mut HashMap<Vector, Colour>) {
             State::AwaitingInput => {
                 vm.input(*painted.get(&pos).unwrap_or(&Colour::Black) as Int);
             }
-            State::Outputting(o) => {
-                match colour {
-                    None => {
-                        colour = Some(Colour::from(o));
-                    }
-                    Some(c) => {
-                        painted.insert(pos, c);
-                        let turn_right = o != 0;
-                        if turn_right {
-                            look = Vector { x: -look.y, y: look.x };
-                        } else {
-                            look = Vector { x: look.y, y: -look.x };
-                        }
-                        pos += look;
-                        colour = None;
-                    }
+            State::Outputting(o) => match colour {
+                None => {
+                    colour = Some(Colour::from(o));
                 }
-            }
+                Some(c) => {
+                    painted.insert(pos, c);
+                    let turn_right = o != 0;
+                    if turn_right {
+                        look = Vector {
+                            x: -look.y,
+                            y: look.x,
+                        };
+                    } else {
+                        look = Vector {
+                            x: look.y,
+                            y: -look.x,
+                        };
+                    }
+                    pos += look;
+                    colour = None;
+                }
+            },
             State::Finished => break,
         }
     }
@@ -97,31 +109,40 @@ fn print_hull(painted: &HashMap<Vector, Colour>) {
     let mut max_x = 0;
     let mut max_y = 0;
     for (v, _) in painted {
-        if v.x < min_x { min_x = v.x; }
-        if v.x > max_x { max_x = v.x; }
-        if v.y < min_y { min_y = v.y; }
-        if v.y > max_y { max_y = v.y; }
+        if v.x < min_x {
+            min_x = v.x;
+        }
+        if v.x > max_x {
+            max_x = v.x;
+        }
+        if v.y < min_y {
+            min_y = v.y;
+        }
+        if v.y > max_y {
+            max_y = v.y;
+        }
     }
     for y in min_y..(max_y + 1) {
         for x in min_x..(max_x + 1) {
             let c = painted.get(&Vector { x, y });
             print!("{}", c.unwrap_or(&Colour::Black));
         }
-        println!();
+        io::println!();
     }
 }
 
-fn main() {
+#[no_mangle]
+pub fn day_11() {
     let program = Program::from_stdin().unwrap();
     let mut painted;
 
     painted = HashMap::new();
     paint(&program, &mut painted);
-    println!("Painted: {}", painted.len());
+    io::println!("Painted: {}", painted.len());
 
     painted = HashMap::new();
     painted.insert(Vector { x: 0, y: 0 }, Colour::White);
     paint(&program, &mut painted);
-    println!("Identifier:");
+    io::println!("Identifier:");
     print_hull(&painted);
 }

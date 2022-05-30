@@ -1,7 +1,8 @@
-use aoc::intcode::{Program, VM, Int, State};
-use std::collections::{VecDeque, HashSet, HashMap};
+use crate::intcode::{Int, Program, State, VM};
+use crate::io;
+use crate::util::DIRECTIONS;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::mem::swap;
-use aoc::util::DIRECTIONS;
 
 enum Tile {
     Wall = 0,
@@ -16,31 +17,41 @@ fn print_positions(positions: &HashMap<(i32, i32), Tile>) {
     let mut max_x = 0;
     let mut max_y = 0;
     for (&(x, y), _) in positions {
-        if x < min_x { min_x = x; }
-        if x > max_x { max_x = x; }
-        if y < min_y { min_y = y; }
-        if y > max_y { max_y = y; }
+        if x < min_x {
+            min_x = x;
+        }
+        if x > max_x {
+            max_x = x;
+        }
+        if y < min_y {
+            min_y = y;
+        }
+        if y > max_y {
+            max_y = y;
+        }
     }
 
     for y in min_y..(max_y + 1) {
         for x in min_x..(max_x + 1) {
-            print!("{}",
-                   match positions.get(&(x, y)) {
-                       None => ' ',
-                       Some(t) => match t {
-                           Tile::Wall => '#',
-                           Tile::Space => '.',
-                           Tile::Oxygen => 'O',
-                       }
-                   }
+            print!(
+                "{}",
+                match positions.get(&(x, y)) {
+                    None => ' ',
+                    Some(t) => match t {
+                        Tile::Wall => '#',
+                        Tile::Space => '.',
+                        Tile::Oxygen => 'O',
+                    },
+                }
             )
         }
-        println!();
+        io::println!();
     }
-    println!()
+    io::println!()
 }
 
-fn main() {
+#[no_mangle]
+pub fn day_15() {
     let program = Program::from_stdin().unwrap();
 
     let mut droids = VecDeque::new();
@@ -72,12 +83,13 @@ fn main() {
                                         Tile::Space
                                     }
                                     2 => {
-                                        println!("Steps: {}", steps);
+                                        io::println!("Steps: {}", steps);
                                         oxygen_source = new_pos;
                                         Tile::Oxygen
                                     }
                                     _ => panic!(),
-                                });
+                                },
+                            );
                         }
                         _ => panic!(),
                     }
@@ -114,5 +126,5 @@ fn main() {
         }
         minutes += 1;
     }
-    println!("Minutes: {}", minutes);
+    io::println!("Minutes: {}", minutes);
 }

@@ -1,11 +1,17 @@
+use crate::io::{stdin, BufRead};
 use std::collections::HashSet;
-use std::io::{BufRead, stdin};
 
+use crate::io;
 use itertools::Itertools;
 use num::Integer;
 use std::f32::consts::PI;
 
-fn get_detectable(from: &(i32, i32), asteroids: &HashSet<(i32, i32)>, width: i32, height: i32) -> HashSet<(i32, i32)> {
+fn get_detectable(
+    from: &(i32, i32),
+    asteroids: &HashSet<(i32, i32)>,
+    width: i32,
+    height: i32,
+) -> HashSet<(i32, i32)> {
     let mut detectable = HashSet::new();
     let mut candidates = asteroids.clone();
     let (sx, sy) = from;
@@ -22,9 +28,7 @@ fn get_detectable(from: &(i32, i32), asteroids: &HashSet<(i32, i32)>, width: i32
                 loop {
                     cx += lx;
                     cy += ly;
-                    if cx < 0 || width <= cx ||
-                        cy < 0 || height <= cy
-                    {
+                    if cx < 0 || width <= cx || cy < 0 || height <= cy {
                         break;
                     }
                     if candidates.remove(&(cx, cy)) && !found {
@@ -50,7 +54,8 @@ fn bearing((x, y): (i32, i32)) -> f32 {
 
 const ASTEROID_NTH: usize = 200;
 
-fn main() {
+#[no_mangle]
+pub fn day_10() {
     let stdin = stdin();
     let mut asteroids: HashSet<(i32, i32)> = HashSet::new();
     let (mut x, mut y) = (0, 0);
@@ -66,14 +71,14 @@ fn main() {
     }
     let (width, height) = (x, y);
 
-    let (pos, mut detectable) =
-        asteroids.iter()
-            .map(|station| (*station, get_detectable(station, &asteroids, width, height)))
-            .max_by_key(|(_, visible)| visible.len())
-            .unwrap();
+    let (pos, mut detectable) = asteroids
+        .iter()
+        .map(|station| (*station, get_detectable(station, &asteroids, width, height)))
+        .max_by_key(|(_, visible)| visible.len())
+        .unwrap();
     let (sx, sy) = pos;
 
-    println!("Visible: {} from {:?}", detectable.len(), pos);
+    io::println!("Visible: {} from {:?}", detectable.len(), pos);
 
     asteroids.remove(&pos);
     let mut vaporized = 0;
@@ -89,9 +94,7 @@ fn main() {
                 })
                 .nth(ASTEROID_NTH - vaporized - 1)
                 .unwrap();
-            println!("200th: {} * 100 + {} = {}",
-                     tx, ty,
-                     tx * 100 + ty);
+            io::println!("200th: {} * 100 + {} = {}", tx, ty, tx * 100 + ty);
             return;
         } else {
             // there's more than 200 visible to start so this never gets called

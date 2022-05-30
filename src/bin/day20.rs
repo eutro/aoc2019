@@ -1,11 +1,11 @@
-use std::io::{stdin, BufRead};
+use crate::io::{self, stdin, BufRead};
+use crate::util::{Dir, DIRECTIONS};
 use itertools::Itertools;
-use aoc::util::{DIRECTIONS, Dir};
-use std::collections::{HashMap, VecDeque, HashSet};
-use std::fmt::{Display, Formatter};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt;
-use std::ops::Index;
+use std::fmt::{Display, Formatter};
 use std::mem::swap;
+use std::ops::Index;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 enum ParsedTile {
@@ -44,7 +44,13 @@ enum Side {
 impl Side {
     fn deepen(&self, depth: usize) -> Option<usize> {
         match self {
-            Side::Outer => if depth == 0 { None } else { Some(depth - 1) },
+            Side::Outer => {
+                if depth == 0 {
+                    None
+                } else {
+                    Some(depth - 1)
+                }
+            }
             Side::Inner => Some(depth + 1),
         }
     }
@@ -72,7 +78,11 @@ impl Tile {
         }
     }
 
-    fn neighbours(&self, depth: usize, pos: (usize, usize)) -> impl Iterator<Item=(usize, (usize, usize))> {
+    fn neighbours(
+        &self,
+        depth: usize,
+        pos: (usize, usize),
+    ) -> impl Iterator<Item = (usize, (usize, usize))> {
         DIRECTIONS
             .iter()
             .map(move |&d| (depth, d.offset(pos)))
@@ -81,9 +91,7 @@ impl Tile {
 
     fn linked(&self, depth: usize) -> Option<(usize, (usize, usize))> {
         match self {
-            Tile::Paired(side, _, link) => side
-                .deepen(depth)
-                .map(|d| (d, *link)),
+            Tile::Paired(side, _, link) => side.deepen(depth).map(|d| (d, *link)),
             _ => None,
         }
     }
@@ -91,32 +99,33 @@ impl Tile {
 
 impl Display for Tile {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            Tile::Wall => '#',
-            Tile::Space => '.',
-            Tile::None => ' ',
-            Tile::Unpaired(_) => '*',
-            Tile::Paired(Side::Outer, _, _) => 'o',
-            Tile::Paired(Side::Inner, _, _) => 'i',
-            Tile::HalfPortal(c) => *c,
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Tile::Wall => '#',
+                Tile::Space => '.',
+                Tile::None => ' ',
+                Tile::Unpaired(_) => '*',
+                Tile::Paired(Side::Outer, _, _) => 'o',
+                Tile::Paired(Side::Inner, _, _) => 'i',
+                Tile::HalfPortal(c) => *c,
+            }
+        )
     }
 }
 
 #[derive(Clone, Debug)]
 struct Donut {
-    tiles: Vec<Vec<Tile>>
+    tiles: Vec<Vec<Tile>>,
 }
 
 impl Donut {
-    fn iter(&self) -> impl Iterator<Item=((usize, usize), Tile)> + '_ {
+    fn iter(&self) -> impl Iterator<Item = ((usize, usize), Tile)> + '_ {
         self.tiles
             .iter()
             .enumerate()
-            .flat_map(|(y, l)| l
-                .iter()
-                .enumerate()
-                .map(move |(x, &t)| ((x, y), t)))
+            .flat_map(|(y, l)| l.iter().enumerate().map(move |(x, &t)| ((x, y), t)))
     }
 }
 
@@ -138,57 +147,50 @@ impl From<Vec<Vec<ParsedTile>>> for Donut {
             .enumerate()
             .map(|(y, line)| {
                 max_x = max_x.max(line.len());
-                line
-                    .iter()
+                line.iter()
                     .enumerate()
-                    .map(|(x, &tile)| {
-                        match tile {
-                            ParsedTile::Wall => Tile::Wall,
-                            ParsedTile::Space => Tile::Space,
-                            ParsedTile::None => Tile::None,
-                            ParsedTile::HalfPortal(c) => {
-                                if x > 0 && y > 0
-                                {
-                                    let mut full = None;
-                                    let mut open = None;
-                                    for d in &DIRECTIONS {
-                                        let (tx, ty) = d.offset((x, y));
-                                        match v
-                                            .get(ty)
-                                            .and_then(|p| p
-                                                .get(tx)) {
-                                            None => {}
-                                            Some(&t) => match t {
-                                                ParsedTile::HalfPortal(oc) => {
-                                                    full = Some(match d {
-                                                        Dir::North => Portal(c, oc),
-                                                        Dir::South => Portal(oc, c),
-                                                        Dir::West => Portal(oc, c),
-                                                        Dir::East => Portal(c, oc),
-                                                    });
-                                                }
-                                                ParsedTile::Space => {
-                                                    open = Some((tx, ty));
-                                                }
-                                                _ => {}
+                    .map(|(x, &tile)| match tile {
+                        ParsedTile::Wall => Tile::Wall,
+                        ParsedTile::Space => Tile::Space,
+                        ParsedTile::None => Tile::None,
+                        ParsedTile::HalfPortal(c) => {
+                            if x > 0 && y > 0 {
+                                let mut full = None;
+                                let mut open = None;
+                                for d in &DIRECTIONS {
+                                    let (tx, ty) = d.offset((x, y));
+                                    match v.get(ty).and_then(|p| p.get(tx)) {
+                                        None => {}
+                                        Some(&t) => match t {
+                                            ParsedTile::HalfPortal(oc) => {
+                                                full = Some(match d {
+                                                    Dir::North => Portal(c, oc),
+                                                    Dir::South => Portal(oc, c),
+                                                    Dir::West => Portal(oc, c),
+                                                    Dir::East => Portal(c, oc),
+                                                });
                                             }
-                                        }
+                                            ParsedTile::Space => {
+                                                open = Some((tx, ty));
+                                            }
+                                            _ => {}
+                                        },
                                     }
-                                    if open.is_some() {
-                                        let pos = open.unwrap();
-                                        let portal = full.unwrap();
-                                        match unlinked.remove(&portal) {
-                                            Some(other) => {
-                                                linked.push((portal, other, pos));
-                                            }
-                                            None => {
-                                                unlinked.insert(portal, pos);
-                                            }
+                                }
+                                if open.is_some() {
+                                    let pos = open.unwrap();
+                                    let portal = full.unwrap();
+                                    match unlinked.remove(&portal) {
+                                        Some(other) => {
+                                            linked.push((portal, other, pos));
+                                        }
+                                        None => {
+                                            unlinked.insert(portal, pos);
                                         }
                                     }
                                 }
-                                Tile::HalfPortal(c)
                             }
+                            Tile::HalfPortal(c)
                         }
                     })
                     .collect_vec()
@@ -200,9 +202,7 @@ impl From<Vec<Vec<ParsedTile>>> for Donut {
         let max_y = v.len();
         let side = |x: usize, y: usize| {
             const OUT_WIDTH: usize = 3;
-            if x <= OUT_WIDTH || y <= OUT_WIDTH ||
-                x >= max_x - OUT_WIDTH ||
-                y >= max_y - OUT_WIDTH
+            if x <= OUT_WIDTH || y <= OUT_WIDTH || x >= max_x - OUT_WIDTH || y >= max_y - OUT_WIDTH
             {
                 Side::Outer
             } else {
@@ -240,17 +240,13 @@ fn traverse_donut(start: (usize, usize), donut: &Donut, with_depth: bool) -> Opt
         while !q.is_empty() {
             let (depth, pos) = q.pop_front().unwrap();
             let tile = donut[pos];
-            if matches!(tile, Tile::Unpaired(Portal('Z', 'Z'))) && depth == 0
-            {
+            if matches!(tile, Tile::Unpaired(Portal('Z', 'Z'))) && depth == 0 {
                 return Some(steps);
             }
-            for (prov_depth, neighbour) in tile.neighbours(if with_depth { depth } else { 1 }, pos) {
+            for (prov_depth, neighbour) in tile.neighbours(if with_depth { depth } else { 1 }, pos)
+            {
                 let neighbour_tile = donut[neighbour];
-                let new_depth = if with_depth {
-                    prov_depth
-                } else {
-                    0
-                };
+                let new_depth = if with_depth { prov_depth } else { 0 };
                 if neighbour_tile.traversible() {
                     // going through seen inner portals could also be filtered out here but it's fast enough anyway
                     if seen.insert((new_depth, neighbour)) {
@@ -265,24 +261,22 @@ fn traverse_donut(start: (usize, usize), donut: &Donut, with_depth: bool) -> Opt
     None
 }
 
-fn main() {
+#[no_mangle]
+pub fn day_20() {
     let stdin = stdin();
     let donut: Donut = stdin
         .lock()
         .lines()
-        .map(|line| line
-            .unwrap()
-            .chars()
-            .map(ParsedTile::from)
-            .collect_vec())
+        .map(|line| line.unwrap().chars().map(ParsedTile::from).collect_vec())
         .collect_vec()
         .into();
 
-    let start = donut.iter()
+    let start = donut
+        .iter()
         .find(|(_, tile)| matches!(tile, Tile::Unpaired(Portal('A', 'A'))))
         .unwrap()
         .0;
 
-    println!("Steps: {}", traverse_donut(start, &donut, false).unwrap());
-    println!("Steps: {}", traverse_donut(start, &donut, true).unwrap());
+    io::println!("Steps: {}", traverse_donut(start, &donut, false).unwrap());
+    io::println!("Steps: {}", traverse_donut(start, &donut, true).unwrap());
 }

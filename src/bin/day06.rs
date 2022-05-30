@@ -1,5 +1,5 @@
+use crate::io::{self, stdin, BufRead};
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::io::{BufRead, stdin};
 use std::mem::swap;
 
 use itertools::Itertools;
@@ -14,14 +14,12 @@ fn identify(name: &str) -> u32 {
 fn traverse(obj: u32, orbited: &HashMap<u32, HashSet<u32>>, depth: u32) -> u32 {
     (match orbited.get(&obj) {
         None => 0,
-        Some(set) => set
-            .iter()
-            .map(|o| traverse(*o, orbited, depth + 1))
-            .sum(),
+        Some(set) => set.iter().map(|o| traverse(*o, orbited, depth + 1)).sum(),
     }) + depth
 }
 
-fn main() {
+#[no_mangle]
+pub fn day_06() {
     // object -> objects orbiting it
     let mut orbiting_map: HashMap<u32, HashSet<u32>> = HashMap::new();
     // object -> object it's orbiting
@@ -48,13 +46,13 @@ fn main() {
         orbited_map.insert(orbiter, orbited);
     }
 
-    println!("Orbits: {}", traverse(identify("COM"), &orbiting_map, 0));
+    io::println!("Orbits: {}", traverse(identify("COM"), &orbiting_map, 0));
 
     let target = *orbited_map.get(&identify("SAN")).unwrap();
     let from = *orbited_map.get(&identify("YOU")).unwrap();
 
     if target == from {
-        println!("Jumps: 0");
+        io::println!("Jumps: 0");
         return;
     }
 
@@ -69,21 +67,22 @@ fn main() {
     while !q.is_empty() {
         for obj in q
             .iter()
-            .map(|el|
+            .map(|el| {
                 orbiting_map
                     .get(&el)
                     .into_iter()
                     .flatten()
-                    .chain(orbited_map
-                        .get(&el)
-                        .into_iter()))
+                    .chain(orbited_map.get(&el).into_iter())
+            })
             .flatten()
         {
             if *obj == target {
-                println!("Jumps: {}", jumps);
+                io::println!("Jumps: {}", jumps);
                 return;
             }
-            if !visited.insert(*obj) { continue; };
+            if !visited.insert(*obj) {
+                continue;
+            };
             tq.push_back(*obj);
         }
         swap(&mut q, &mut tq);

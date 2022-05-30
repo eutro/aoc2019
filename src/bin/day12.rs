@@ -1,12 +1,12 @@
-use std::io::{stdin, BufRead};
+use crate::io::{self, stdin, BufRead};
 use itertools::Itertools;
-use std::str::FromStr;
-use std::ops::Add;
-use std::fmt::{Debug, Formatter};
-use std::{fmt, iter};
-use itertools::__std_iter::{Sum, FromIterator};
-use std::hash::Hash;
+use itertools::__std_iter::{FromIterator, Sum};
 use num::Integer;
+use std::fmt::{Debug, Formatter};
+use std::hash::Hash;
+use std::ops::Add;
+use std::str::FromStr;
+use std::{fmt, iter};
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
 struct Vector(i32, i32, i32);
@@ -14,13 +14,13 @@ struct Vector(i32, i32, i32);
 impl Vector {
     fn energy(&self) -> u32 {
         match self {
-            Vector(x, y, z) => x.abs() as u32 + y.abs() as u32 + z.abs() as u32
+            Vector(x, y, z) => x.abs() as u32 + y.abs() as u32 + z.abs() as u32,
         }
     }
 
     fn cmp(&self, Vector(x2, y2, z2): &Self) -> Self {
         match self {
-            Vector(x1, y1, z1) => Vector(x1.cmp(x2) as i32, y1.cmp(y2) as i32, z1.cmp(z2) as i32)
+            Vector(x1, y1, z1) => Vector(x1.cmp(x2) as i32, y1.cmp(y2) as i32, z1.cmp(z2) as i32),
         }
     }
 
@@ -47,7 +47,7 @@ fn axes() -> Vec<Axis> {
 impl Debug for Vector {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Vector(x, y, z) => write!(f, "<x={}, y={}, z={}>", x, y, z)
+            Vector(x, y, z) => write!(f, "<x={}, y={}, z={}>", x, y, z),
         }
     }
 }
@@ -57,13 +57,13 @@ impl Add for Vector {
 
     fn add(self, Vector(x2, y2, z2): Self) -> Self::Output {
         match self {
-            Vector(x1, y1, z1) => Vector(x1 + x2, y1 + y2, z1 + z2)
+            Vector(x1, y1, z1) => Vector(x1 + x2, y1 + y2, z1 + z2),
         }
     }
 }
 
 impl Sum for Vector {
-    fn sum<I: Iterator<Item=Vector>>(iter: I) -> Self {
+    fn sum<I: Iterator<Item = Vector>>(iter: I) -> Self {
         iter.fold(Vector(0, 0, 0), |a, b| a + b)
     }
 }
@@ -74,12 +74,7 @@ impl FromStr for Vector {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(s.trim_matches(|c| c == '<' || c == '>')
             .split(", ")
-            .map(|a| a
-                .split("=")
-                .nth(1)
-                .unwrap()
-                .parse::<i32>()
-                .unwrap())
+            .map(|a| a.split("=").nth(1).unwrap().parse::<i32>().unwrap())
             .collect_tuple::<(i32, i32, i32)>()
             .map(|(x, y, z)| Vector(x, y, z))
             .unwrap())
@@ -116,31 +111,26 @@ impl FromStr for Moon {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Moon { pos: s.parse::<Vector>().unwrap(), vel: Vector(0, 0, 0) })
+        Ok(Moon {
+            pos: s.parse::<Vector>().unwrap(),
+            vel: Vector(0, 0, 0),
+        })
     }
 }
 
 #[derive(Clone, Hash, Eq, PartialEq)]
 struct Universe {
-    moons: Vec<Moon>
+    moons: Vec<Moon>,
 }
 
 impl Universe {
-    fn simulate(&self) -> impl Iterator<Item=Self> {
+    fn simulate(&self) -> impl Iterator<Item = Self> {
         let mut self_mut = self.clone();
-        vec![self.clone()]
-            .into_iter()
-            .chain(iter::from_fn(move || {
-            self_mut.moons = self_mut.moons
+        vec![self.clone()].into_iter().chain(iter::from_fn(move || {
+            self_mut.moons = self_mut
+                .moons
                 .iter()
-                .map(|m| m
-                    .with_vel(m.vel + self_mut
-                        .moons
-                        .iter()
-                        .map(|o| o
-                            .pos
-                            .cmp(&m.pos))
-                        .sum()))
+                .map(|m| m.with_vel(m.vel + self_mut.moons.iter().map(|o| o.pos.cmp(&m.pos)).sum()))
                 .map(|m| m.with_pos(m.pos + m.vel))
                 .collect_vec();
             Some(self_mut.clone())
@@ -148,7 +138,10 @@ impl Universe {
     }
 
     fn axis(&self, axis: Axis) -> Vec<(i32, i32)> {
-        self.moons.iter().map(|m| (m.pos.axis(axis), m.vel.axis(axis))).collect_vec()
+        self.moons
+            .iter()
+            .map(|m| (m.pos.axis(axis), m.vel.axis(axis)))
+            .collect_vec()
     }
 
     fn energy(&self) -> u32 {
@@ -158,17 +151,16 @@ impl Universe {
     fn period(&self) -> Frequency {
         axes()
             .iter()
-            .map(|&axis| self
-                .simulate()
-                .map(|u| u.axis(axis))
-                .collect())
+            .map(|&axis| self.simulate().map(|u| u.axis(axis)).collect())
             .sum()
     }
 }
 
 impl FromIterator<Moon> for Universe {
-    fn from_iter<T: IntoIterator<Item=Moon>>(iter: T) -> Self {
-        Universe { moons: iter.into_iter().collect() }
+    fn from_iter<T: IntoIterator<Item = Moon>>(iter: T) -> Self {
+        Universe {
+            moons: iter.into_iter().collect(),
+        }
     }
 }
 
@@ -186,8 +178,9 @@ impl Debug for Universe {
 struct Frequency(usize);
 
 impl Sum for Frequency {
-    fn sum<I: Iterator<Item=Frequency>>(iter: I) -> Self {
-        iter.fold1(|a, b| Frequency(a.0.lcm(&b.0))).unwrap_or(Frequency(1))
+    fn sum<I: Iterator<Item = Frequency>>(iter: I) -> Self {
+        iter.fold1(|a, b| Frequency(a.0.lcm(&b.0)))
+            .unwrap_or(Frequency(1))
     }
 }
 
@@ -198,29 +191,34 @@ impl Debug for Frequency {
 }
 
 impl<T> FromIterator<T> for Frequency
-    where T: Eq {
-    fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> Self {
+where
+    T: Eq,
+{
+    fn from_iter<I: IntoIterator<Item = T>>(iterable: I) -> Self {
         let mut iter = iterable.into_iter();
         let first: T = iter.next().unwrap();
-        Frequency(iter
-            .enumerate()
-            .find(|(_, state)| *state == first)
-            .unwrap()
-            .0 + 1)
+        Frequency(
+            iter.enumerate()
+                .find(|(_, state)| *state == first)
+                .unwrap()
+                .0
+                + 1,
+        )
     }
 }
 
-fn main() {
+#[no_mangle]
+pub fn day_12() {
     let stdin = stdin();
     let universe: Universe = stdin
         .lock()
         .lines()
-        .map(|s| s
-            .unwrap()
-            .parse::<Moon>()
-            .unwrap())
+        .map(|s| s.unwrap().parse::<Moon>().unwrap())
         .collect();
 
-    println!("Energy: {}", universe.simulate().nth(1000).unwrap().energy());
-    println!("Period: {:?}", universe.period());
+    io::println!(
+        "Energy: {}",
+        universe.simulate().nth(1000).unwrap().energy()
+    );
+    io::println!("Period: {:?}", universe.period());
 }

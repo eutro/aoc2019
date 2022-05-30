@@ -1,8 +1,8 @@
-use std::str::FromStr;
+use crate::io::{self, stdin, BufRead};
 use itertools::Itertools;
-use std::io::{stdin, BufRead};
-use std::collections::HashMap;
 use num::Integer;
+use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Debug)]
 struct CountedIngredient {
@@ -44,20 +44,31 @@ fn add_ingredients(recipe: &Recipe, required_ingredients: &mut HashMap<String, i
     for ingredient in &recipe.inputs {
         match required_ingredients.get_mut(&ingredient.ingredient) {
             None => {
-                required_ingredients.insert(ingredient.ingredient.clone(), (ingredient.count * times) as i64);
+                required_ingredients.insert(
+                    ingredient.ingredient.clone(),
+                    (ingredient.count * times) as i64,
+                );
             }
             Some(i) => *i += (ingredient.count * times) as i64,
         }
     }
     match required_ingredients.get_mut(&recipe.output.ingredient) {
         None => {
-            required_ingredients.insert(recipe.output.ingredient.clone(), -((recipe.output.count * times) as i64));
+            required_ingredients.insert(
+                recipe.output.ingredient.clone(),
+                -((recipe.output.count * times) as i64),
+            );
         }
         Some(i) => *i -= (recipe.output.count * times) as i64,
     }
 }
 
-fn add_fuel(recipes: &HashMap<String, Recipe>, mut required_ingredients: &mut HashMap<String, i64>, required_ore: &mut u64, times: u64) {
+fn add_fuel(
+    recipes: &HashMap<String, Recipe>,
+    mut required_ingredients: &mut HashMap<String, i64>,
+    required_ore: &mut u64,
+    times: u64,
+) {
     add_ingredients(recipes.get("FUEL").unwrap(), required_ingredients, times);
     while !required_ingredients.iter().all(|(_, &c)| c <= 0) {
         let keys = required_ingredients.keys().map(|k| k.clone()).collect_vec();
@@ -77,7 +88,7 @@ fn add_fuel(recipes: &HashMap<String, Recipe>, mut required_ingredients: &mut Ha
             match recipes.get(ingredient) {
                 None => panic!("No recipe for {}", ingredient),
                 Some(recipe) => {
-                    let times = (count as u64).div_ceil(&recipe.output.count);
+                    let times = Integer::div_ceil(&(count as u64), &recipe.output.count);
                     add_ingredients(recipe, &mut required_ingredients, times);
                 }
             }
@@ -87,16 +98,14 @@ fn add_fuel(recipes: &HashMap<String, Recipe>, mut required_ingredients: &mut Ha
 
 const ORE_COUNT: u64 = 1000000000000;
 
-fn main() {
+#[no_mangle]
+pub fn day_14() {
     let stdin = stdin();
     let mut recipes = HashMap::new();
     for recipe in stdin
         .lock()
         .lines()
-        .map(|s| s
-            .unwrap()
-            .parse::<Recipe>()
-            .unwrap())
+        .map(|s| s.unwrap().parse::<Recipe>().unwrap())
     {
         recipes.insert(recipe.output.ingredient.clone(), recipe);
     }
@@ -104,7 +113,7 @@ fn main() {
     let mut required_ore = 0;
     let mut required_ingredients: HashMap<String, i64> = HashMap::new();
     add_fuel(&recipes, &mut required_ingredients, &mut required_ore, 1);
-    println!("ORE: {}", required_ore);
+    io::println!("ORE: {}", required_ore);
 
     let mut fuel_count = 1;
     let single_fuel_ore = required_ore;
@@ -114,7 +123,12 @@ fn main() {
         if fuel_guess == 0 {
             break;
         }
-        add_fuel(&recipes, &mut required_ingredients, &mut required_ore, fuel_guess);
+        add_fuel(
+            &recipes,
+            &mut required_ingredients,
+            &mut required_ore,
+            fuel_guess,
+        );
         fuel_count += fuel_guess;
         assert!(required_ore <= ORE_COUNT);
     }
@@ -125,5 +139,5 @@ fn main() {
         }
         fuel_count += 1;
     }
-    println!("FUEL: {}", fuel_count);
+    io::println!("FUEL: {}", fuel_count);
 }

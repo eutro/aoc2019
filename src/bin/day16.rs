@@ -1,4 +1,5 @@
-use std::io::stdin;
+use crate::io;
+use crate::io::stdin;
 use itertools::Itertools;
 use std::iter;
 
@@ -12,14 +13,21 @@ fn fft_nth(signal: &Vec<u32>, phases: usize) -> Vec<u32> {
     for _ in 0..phases {
         out_signal = (0..out_signal.len())
             .map(|i| i + 1)
-            .map(|pos| out_signal.iter()
-                .zip(vec![0, 1, 0, -1]
-                    .into_iter()
-                    .flat_map(|i: i32| iter::repeat(i).take(pos))
-                    .cycle()
-                    .skip(1))
-                .map(|(&x, y)| x as i32 * y)
-                .sum::<i32>().abs() as u32 % 10)
+            .map(|pos| {
+                out_signal
+                    .iter()
+                    .zip(
+                        vec![0, 1, 0, -1]
+                            .into_iter()
+                            .flat_map(|i: i32| iter::repeat(i).take(pos))
+                            .cycle()
+                            .skip(1),
+                    )
+                    .map(|(&x, y)| x as i32 * y)
+                    .sum::<i32>()
+                    .abs() as u32
+                    % 10
+            })
             .collect_vec();
     }
     out_signal
@@ -42,7 +50,8 @@ fn fft_message(signal: &Vec<u32>, phases: usize, offset: usize, length: usize) -
     out_signal.into_iter().take(length).collect_vec()
 }
 
-fn main() {
+#[no_mangle]
+pub fn day_16() {
     let stdin = stdin();
     let mut buf = String::new();
     stdin.read_line(&mut buf).unwrap();
@@ -50,12 +59,16 @@ fn main() {
     let signal = buf
         .trim()
         .chars()
-        .map(|c| c
-            .to_digit(10)
-            .unwrap())
+        .map(|c| c.to_digit(10).unwrap())
         .collect_vec();
 
-    println!("Output: {}", fft_nth(&signal, NTH_OUTPUT).iter().take(MESSAGE_LEN).join(""));
+    io::println!(
+        "Output: {}",
+        fft_nth(&signal, NTH_OUTPUT)
+            .iter()
+            .take(MESSAGE_LEN)
+            .join("")
+    );
 
     let message_offset = signal
         .iter()
@@ -67,5 +80,10 @@ fn main() {
         .flat_map(|v| v.into_iter())
         .collect_vec();
 
-    println!("Message: {}", fft_message(&true_input, NTH_OUTPUT, message_offset, MESSAGE_LEN).iter().join(""));
+    io::println!(
+        "Message: {}",
+        fft_message(&true_input, NTH_OUTPUT, message_offset, MESSAGE_LEN)
+            .iter()
+            .join("")
+    );
 }

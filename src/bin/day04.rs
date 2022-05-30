@@ -1,6 +1,6 @@
-use aoc::numbers::DigitIterable;
-use std::io;
-use std::io::BufRead;
+use crate::io;
+use crate::io::BufRead;
+use crate::numbers::DigitIterable;
 
 fn check_p1(pw: &u32) -> bool {
     let mut found_dup = false;
@@ -36,18 +36,16 @@ fn check_p2(pw: &u32) -> bool {
     two_seq || curr_seq == 2
 }
 
-fn main() {
+#[no_mangle]
+pub fn day_04() {
     let stdin = io::stdin();
     let mut line = String::new();
     stdin.lock().read_line(&mut line).unwrap();
-    let mut numbers = line
-        .trim()
-        .split("-")
-        .map(|s| s.parse::<u32>().unwrap());
+    let mut numbers = line.trim().split("-").map(|s| s.parse::<u32>().unwrap());
 
     let low = numbers.next().unwrap();
     let hi = numbers.next().unwrap();
 
-    println!("Valid: {}", (low..hi).filter(check_p1).count());
-    println!("Valid: {}", (low..hi).filter(check_p2).count())
+    io::println!("Valid: {}", (low..hi).filter(check_p1).count());
+    io::println!("Valid: {}", (low..hi).filter(check_p2).count())
 }

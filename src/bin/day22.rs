@@ -1,10 +1,11 @@
-use std::io::{stdin, BufRead};
+use crate::io;
+use crate::io::{stdin, BufRead};
 use itertools::Itertools;
-use num::{Integer, BigInt, One, Zero};
-use std::fmt::{Debug, Formatter};
-use std::fmt;
-use std::str::FromStr;
+use num::{BigInt, Integer, One, Zero};
 use std::convert::TryInto;
+use std::fmt;
+use std::fmt::{Debug, Formatter};
+use std::str::FromStr;
 
 type SpaceCard = usize;
 
@@ -22,14 +23,14 @@ impl FromStr for Shuffle {
             ["deal", "into", "new", "stack"] => Shuffle::Reverse,
             ["deal", "with", "increment", n] => Shuffle::Increment(n.parse().unwrap()),
             ["cut", n] => Shuffle::Cut(n.parse().unwrap()),
-            [..] => panic!("Unknown instruction: {}", s)
+            [..] => panic!("Unknown instruction: {}", s),
         })
     }
 }
 
 #[derive(Clone)]
 struct Deck {
-    count: usize,
+    count: u64,
     // x' = ax - b mod count
     a: BigInt,
     b: BigInt,
@@ -55,7 +56,7 @@ impl Debug for Deck {
 }
 
 impl Deck {
-    fn factory(count: usize) -> Self {
+    fn factory(count: u64) -> Self {
         Deck {
             count,
             a: 1.into(),
@@ -75,7 +76,7 @@ impl Deck {
         deck
     }
 
-    fn iter(&self) -> impl Iterator<Item=SpaceCard> + '_ {
+    fn iter(&self) -> impl Iterator<Item = SpaceCard> + '_ {
         (0..self.len()).map(move |c| self.get(c))
     }
 
@@ -104,11 +105,11 @@ impl Deck {
         }
     }
 
-    fn len(&self) -> usize {
+    fn len(&self) -> u64 {
         self.count
     }
 
-    fn modpow(self, exp: usize) -> Self {
+    fn modpow(self, exp: u64) -> Self {
         if exp == 0 {
             Deck {
                 count: self.count,
@@ -121,7 +122,8 @@ impl Deck {
                 count: self.count,
                 a: self.a.modpow(&2.into(), &self.count.into()),
                 b: ((self.a + 1) * self.b) % self.count,
-            }.modpow(exp / 2)
+            }
+            .modpow(exp / 2)
         } else {
             let a = self.a.clone();
             let b = self.b.clone();
@@ -135,19 +137,19 @@ impl Deck {
         }
     }
 
-    fn get(&self, index: usize) -> SpaceCard {
-        BigInt::from((&self.a * index as i64 + &self.b)
-            .mod_floor(&self.len().into()))
+    fn get(&self, index: u64) -> SpaceCard {
+        BigInt::from((&self.a * index as i64 + &self.b).mod_floor(&self.len().into()))
             .try_into()
             .unwrap()
     }
 }
 
-const CARD_COUNT_1: usize = 10007;
-const CARD_COUNT_2: usize = 119_315_717_514_047;
-const REPEATS: usize = 101_741_582_076_661;
+const CARD_COUNT_1: u64 = 10007;
+const CARD_COUNT_2: u64 = 119_315_717_514_047;
+const REPEATS: u64 = 101_741_582_076_661;
 
-fn main() {
+#[no_mangle]
+pub fn day_22() {
     let stdin = stdin();
     let shuffle = stdin
         .lock()
@@ -164,11 +166,11 @@ fn main() {
         .find_position(|&c| c == 2019)
         .unwrap()
         .0;
-    println!("Position: {}", pos);
+    io::println!("Position: {}", pos);
 
     let card = Deck::factory(CARD_COUNT_2)
         .shuffle(&shuffle)
         .modpow(REPEATS)
         .get(2020);
-    println!("Card: {}", card);
+    io::println!("Card: {}", card);
 }

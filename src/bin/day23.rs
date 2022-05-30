@@ -1,6 +1,7 @@
-use aoc::intcode::{Program, Int, VM, State};
-use std::sync::mpsc::{channel, Sender, Receiver};
+use crate::intcode::{Int, Program, State, VM};
+use crate::io;
 use std::collections::HashMap;
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 const COMPUTERS: Int = 50;
 const NAT_ADDRESS: Int = 255;
@@ -13,7 +14,7 @@ struct Packet {
 
 struct NetworkComputer {
     chan: Receiver<Packet>,
-    vm: VM
+    vm: VM,
 }
 
 impl NetworkComputer {
@@ -25,19 +26,17 @@ impl NetworkComputer {
 
     fn advance(&mut self, addresses: &HashMap<Int, Sender<Packet>>) -> bool {
         match self.vm.next_state().unwrap() {
-            State::AwaitingInput => {
-                match self.chan.try_recv() {
-                    Ok(packet) => {
-                        self.vm.input(packet.x);
-                        self.vm.input(packet.y);
-                        true
-                    }
-                    Err(_) => {
-                        self.vm.input(-1);
-                        false
-                    }
+            State::AwaitingInput => match self.chan.try_recv() {
+                Ok(packet) => {
+                    self.vm.input(packet.x);
+                    self.vm.input(packet.y);
+                    true
                 }
-            }
+                Err(_) => {
+                    self.vm.input(-1);
+                    false
+                }
+            },
             State::Outputting(dest) => {
                 if let State::Outputting(x) = self.vm.next_state().unwrap() {
                     if let State::Outputting(y) = self.vm.next_state().unwrap() {
@@ -48,15 +47,20 @@ impl NetworkComputer {
                             }
                         }
                         true
-                    } else { panic!() }
-                } else { panic!() }
+                    } else {
+                        panic!()
+                    }
+                } else {
+                    panic!()
+                }
             }
             State::Finished => false,
         }
     }
 }
 
-fn main() {
+#[no_mangle]
+pub fn day_23() {
     let nic = Program::from_stdin().unwrap();
     let mut addresses = HashMap::new();
 
@@ -72,7 +76,7 @@ fn main() {
 
     run_until_idle(&mut computers, &addresses);
     let mut last_packet = nat.try_recv().unwrap();
-    println!("Packet: Y={}", last_packet.y);
+    io::println!("Packet: Y={}", last_packet.y);
 
     if let Some(p) = nat.try_iter().last() {
         last_packet = p;
@@ -92,7 +96,7 @@ fn main() {
         }
     }
 
-    println!("Duplicate: Y={}", last_packet.y);
+    io::println!("Duplicate: Y={}", last_packet.y);
 }
 
 const MAX_IDLES: u32 = 2;

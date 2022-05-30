@@ -1,5 +1,5 @@
-use std::io;
-use std::io::BufRead;
+use crate::io;
+use crate::io::BufRead;
 
 fn module_fuel(mass: i32) -> i32 {
     (mass / 3) - 2
@@ -18,7 +18,8 @@ fn module_fuel_recursive(mass: i32) -> i32 {
     total
 }
 
-pub fn main() {
+#[no_mangle]
+pub fn day_01() {
     let stdin = io::stdin();
 
     let mut fuel = 0;
@@ -28,6 +29,6 @@ pub fn main() {
         fuel += module_fuel(mass);
         fuel_recursive += module_fuel_recursive(mass);
     }
-    println!("Fuel: {}", fuel);
-    println!("Recursively: {}", fuel_recursive);
+    io::println!("Fuel: {}", fuel);
+    io::println!("Recursively: {}", fuel_recursive);
 }

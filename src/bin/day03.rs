@@ -1,7 +1,7 @@
+use crate::io;
+use crate::io::BufRead;
 use std::cmp::max;
 use std::cmp::min;
-use std::io;
-use std::io::BufRead;
 
 #[derive(Clone, Copy, Debug)]
 struct P(i32, i32);
@@ -89,7 +89,8 @@ fn seg_len(p: &P, q: &P) -> i32 {
     }
 }
 
-pub fn main() {
+#[no_mangle]
+pub fn day_03() {
     let wire_a = read_wire();
     let wire_b = read_wire();
 
@@ -124,6 +125,6 @@ pub fn main() {
         last_a = *point_a;
     }
 
-    println!("Manhattan: {}", ci_manhattan);
-    println!("Steps: {}", ci_steps);
+    io::println!("Manhattan: {}", ci_manhattan);
+    io::println!("Steps: {}", ci_steps);
 }

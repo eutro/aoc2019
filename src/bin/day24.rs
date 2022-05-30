@@ -1,11 +1,12 @@
-use std::io::{stdin, BufRead};
+use crate::io;
+use crate::io::{stdin, BufRead};
+use crate::util::DIRECTIONS;
 use itertools::Itertools;
-use aoc::util::DIRECTIONS;
-use std::collections::{HashMap, HashSet};
-use std::hash::{Hash, Hasher};
 use itertools::__std_iter::FromIterator;
-use std::fmt::{Debug, Display, Formatter};
+use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::fmt::{Debug, Display, Formatter};
+use std::hash::{Hash, Hasher};
 
 const SIZE: i16 = 5;
 
@@ -49,10 +50,14 @@ impl Pos for RecPos {
         DIRECTIONS
             .iter()
             .map(|&d| (d, d.offset((self.x, self.y))))
-            .flat_map(|(d, (x, y))|
+            .flat_map(|(d, (x, y))| {
                 (if x < 0 || y < 0 || x >= SIZE || y >= SIZE {
                     let (x, y) = d.offset((SIZE / 2, SIZE / 2));
-                    vec![RecPos { x, y, depth: depth - 1 }]
+                    vec![RecPos {
+                        x,
+                        y,
+                        depth: depth - 1,
+                    }]
                 } else if x == SIZE / 2 && y == SIZE / 2 {
                     let (dx, dy) = d.opposite().offset_by((SIZE / 2, SIZE / 2), SIZE / 2);
                     let mut v = Vec::new();
@@ -61,10 +66,18 @@ impl Pos for RecPos {
                         v.push(t.offset((dx, dy)));
                         v.push(t.offset_by((dx, dy), 2));
                     }
-                    v.into_iter().map(|(x, y)| RecPos { x, y, depth: depth + 1 }).collect()
+                    v.into_iter()
+                        .map(|(x, y)| RecPos {
+                            x,
+                            y,
+                            depth: depth + 1,
+                        })
+                        .collect()
                 } else {
                     vec![RecPos { x, y, depth }]
-                }).into_iter())
+                })
+                .into_iter()
+            })
             .collect_vec()
     }
 }
@@ -79,7 +92,7 @@ impl<T: Pos> Eris<T> {
         Eris { live }
     }
 
-    fn live(&self) -> impl Iterator<Item=&T> {
+    fn live(&self) -> impl Iterator<Item = &T> {
         self.live.iter()
     }
 
@@ -102,11 +115,9 @@ impl<T: Pos> Eris<T> {
         Eris {
             live: neighbour_counts
                 .into_iter()
-                .filter(|(pos, count)| {
-                    *count == 1 || (*count == 2 && !self.live.contains(pos))
-                })
+                .filter(|(pos, count)| *count == 1 || (*count == 2 && !self.live.contains(pos)))
                 .map(|(pos, _)| pos)
-                .collect()
+                .collect(),
         }
     }
 }
@@ -120,49 +131,52 @@ impl<T: Pos + Ord> Hash for Eris<T> {
 }
 
 impl<P: Pos> FromIterator<P> for Eris<P> {
-    fn from_iter<T: IntoIterator<Item=P>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = P>>(iter: T) -> Self {
         Eris::new(iter.into_iter().collect())
     }
 }
 
 impl Display for Eris<FlatPos> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", (0..SIZE).map(|y| (0..SIZE)
-            .map(|x| {
-                if self.alive(FlatPos { x, y }) {
-                    '#'
-                } else {
-                    '.'
-                }
-            })
-            .join(""))
-            .join("\n"))
+        write!(
+            f,
+            "{}",
+            (0..SIZE)
+                .map(|y| (0..SIZE)
+                    .map(|x| {
+                        if self.alive(FlatPos { x, y }) {
+                            '#'
+                        } else {
+                            '.'
+                        }
+                    })
+                    .join(""))
+                .join("\n")
+        )
     }
 }
 
 impl Display for Eris<RecPos> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        for depth in self
-            .live()
-            .map(|p| p.depth)
-            .unique()
-            .sorted()
-        {
-            write!(f,
-                   "Depth {}:\n{}",
-                   depth,
-                   (0..SIZE).map(|y| (0..SIZE)
-                       .map(|x| {
-                           if x == SIZE / 2 && y == SIZE / 2 {
-                               '?'
-                           } else if self.alive(RecPos { x, y, depth }) {
-                               '#'
-                           } else {
-                               '.'
-                           }
-                       })
-                       .join(""))
-                       .join("\n\n"))?;
+        for depth in self.live().map(|p| p.depth).unique().sorted() {
+            write!(
+                f,
+                "Depth {}:\n{}",
+                depth,
+                (0..SIZE)
+                    .map(|y| (0..SIZE)
+                        .map(|x| {
+                            if x == SIZE / 2 && y == SIZE / 2 {
+                                '?'
+                            } else if self.alive(RecPos { x, y, depth }) {
+                                '#'
+                            } else {
+                                '.'
+                            }
+                        })
+                        .join(""))
+                    .join("\n\n")
+            )?;
         }
         Ok(())
     }
@@ -170,20 +184,22 @@ impl Display for Eris<RecPos> {
 
 const MINUTES: i32 = 200;
 
-fn main() {
+#[no_mangle]
+pub fn day_24() {
     let stdin = stdin();
     let start = stdin
         .lock()
         .lines()
         .enumerate()
-        .flat_map(|(y, l)| l
-            .unwrap()
-            .chars()
-            .enumerate()
-            .filter(|(_, c)| *c == '#')
-            .map(move |(x, _)| (x as i16, y as i16))
-            .collect_vec()
-            .into_iter())
+        .flat_map(|(y, l)| {
+            l.unwrap()
+                .chars()
+                .enumerate()
+                .filter(|(_, c)| *c == '#')
+                .map(move |(x, _)| (x as i16, y as i16))
+                .collect_vec()
+                .into_iter()
+        })
         .collect_vec();
 
     let mut eris = start
@@ -200,7 +216,7 @@ fn main() {
     }
 
     let biodiversity = eris.live().map(FlatPos::biodiversity).sum::<u32>();
-    println!("Biodiversity: {}", biodiversity);
+    io::println!("Biodiversity: {}", biodiversity);
 
     let mut eris = start
         .iter()
@@ -209,5 +225,5 @@ fn main() {
     for _ in 0..MINUTES {
         eris = eris.next();
     }
-    println!("Bugs: {}", eris.live().count());
+    io::println!("Bugs: {}", eris.live().count());
 }
