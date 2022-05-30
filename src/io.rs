@@ -1,63 +1,49 @@
 #[cfg(not(feature = "wasm"))]
 pub use std::io::*;
-
-pub use std::print;
-pub use std::println;
+#[cfg(not(feature = "wasm"))]
+pub use std::{println, print};
 
 #[cfg(feature = "wasm")]
 pub use wasm_io::*;
+#[cfg(feature = "wasm")]
+pub(crate) use wasm_io::{println, print};
 
 #[allow(unused)]
+#[macro_use]
 mod wasm_io {
-    macro_rules! println {
+    #[no_mangle]
+    pub extern "C" fn stdin_read_byte() -> i32 {
+        // no-op, to replace
+        -1
+    }
+
+    #[no_mangle]
+    pub extern "C" fn stdout_write_byte(byte: i32) {
+        // no-op, to replace
+    }
+
+    use std::fmt::Debug;
+    pub use std::io::{Read, Write, BufRead, Error};
+    use std::io::BufReader;
+
+    macro_rules! iprintln {
         ($($arg:tt)*) => {
-            writeln!($crate::io::stdout(), $($arg)*).unwrap();
+            writeln!($crate::io::stdout(), $($arg)*).unwrap()
         };
     }
 
-    macro_rules! print {
+    macro_rules! iprint {
         ($($arg:tt)*) => {
-            write!($crate::io::stdout(), $($arg)*).unwrap();
+            write!($crate::io::stdout(), $($arg)*).unwrap()
         };
     }
+
+    pub(crate) use iprintln as println;
+    pub(crate) use iprint as print;
 
     pub struct Stdin;
     pub struct Stdout;
-    pub struct StdinLock;
-    #[derive(Debug)]
-    pub struct Error;
-
-    pub struct Lines<'a, T: ?Sized>(&'a mut T);
-
-    pub trait BufRead {
-        fn read_line(&mut self, str: &mut String) -> Result<usize, Error>;
-
-        fn lines(&mut self) -> Lines<'_, Self> {
-            Lines(self)
-        }
-    }
-
-    impl<'a, T> Iterator for Lines<'a, T>
-    where
-        T: BufRead,
-    {
-        type Item = Result<String, Error>;
-        fn next(&mut self) -> Option<Self::Item> {
-            let mut line = String::new();
-            match self.0.read_line(&mut line) {
-                Ok(0) => None,
-                Ok(_) => Some(Ok(line)),
-                Err(e) => Some(Err(e)),
-            }
-        }
-    }
-
-    pub trait Write {
-        fn flush(&self) -> Result<(), Error> {
-            // no-op
-            Ok(())
-        }
-    }
+    pub type StdinLock = BufReader<Stdin>;
 
     pub fn stdin() -> Stdin {
         Stdin
@@ -67,35 +53,56 @@ mod wasm_io {
         Stdout
     }
 
+    fn stdin_bytes() -> impl Iterator<Item = u8> {
+        std::iter::from_fn(|| {
+            match stdin_read_byte() {
+                -1 => None,
+                b => Some(b as u8),
+            }
+        })
+    }
+
+    impl Read for Stdin {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let mut len = 0;
+            for (i, o) in stdin_bytes().take(buf.len()).zip(buf.iter_mut()) {
+                *o = i;
+                len += 1;
+            }
+            Ok(len)
+        }
+    }
+
     impl Stdin {
         pub fn lock(&self) -> StdinLock {
-            StdinLock
+            BufReader::new(Stdin)
         }
-    }
 
-    #[no_mangle]
-    pub fn stdin_read_line(buf: &mut String) -> Result<usize, Error> {
-        // no-op
-        Ok(0)
-    }
-
-    impl BufRead for Stdin {
-        fn read_line(&mut self, str: &mut String) -> Result<usize, Error> {
-            stdin_read_line(str)
-        }
-    }
-
-    impl BufRead for StdinLock {
-        fn read_line(&mut self, str: &mut String) -> Result<usize, Error> {
-            stdin_read_line(str)
-        }
-    }
-
-    impl Stdin {
         pub fn read_line(&self, str: &mut String) -> Result<usize, Error> {
             self.lock().read_line(str)
         }
+
+        pub fn lines(&self) -> impl Iterator<Item = Result<String, Error>> {
+            self.lock().lines()
+        }
     }
 
-    impl Write for Stdout {}
+    impl Write for Stdout {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            for &b in buf {
+                stdout_write_byte(b as i32);
+            }
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl Stdout {
+        pub fn write_fmt(&mut self, fmt: std::fmt::Arguments) -> std::io::Result<()> {
+            Write::write_fmt(self, fmt)
+        }
+    }
 }

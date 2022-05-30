@@ -33,7 +33,7 @@ fn print_positions(positions: &HashMap<(i32, i32), Tile>) {
 
     for y in min_y..(max_y + 1) {
         for x in min_x..(max_x + 1) {
-            print!(
+            io::print!(
                 "{}",
                 match positions.get(&(x, y)) {
                     None => ' ',

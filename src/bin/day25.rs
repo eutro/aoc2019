@@ -1,5 +1,5 @@
 use crate::intcode::VM;
-use crate::io::{stdin, BufRead};
+use crate::io::{self, stdin, BufRead};
 
 #[no_mangle]
 pub fn day_25() {
@@ -8,7 +8,7 @@ pub fn day_25() {
     let stdin = stdin();
     loop {
         while let Some(c) = vm.next() {
-            print!("{}", c as u8 as char);
+            io::print!("{}", c as u8 as char);
         }
         let mut s = String::new();
         stdin.lock().read_line(&mut s).unwrap();

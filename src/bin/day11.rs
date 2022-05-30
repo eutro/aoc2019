@@ -125,7 +125,7 @@ fn print_hull(painted: &HashMap<Vector, Colour>) {
     for y in min_y..(max_y + 1) {
         for x in min_x..(max_x + 1) {
             let c = painted.get(&Vector { x, y });
-            print!("{}", c.unwrap_or(&Colour::Black));
+            io::print!("{}", c.unwrap_or(&Colour::Black));
         }
         io::println!();
     }

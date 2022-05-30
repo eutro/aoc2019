@@ -19,7 +19,7 @@ fn display(vm: &mut VM, board: &mut HashMap<(Int, Int), Int>) {
 fn print_board(board: &HashMap<(Int, Int), Int>, w: Int, h: Int) {
     for y in 0..h {
         for x in 0..w {
-            print!(
+            io::print!(
                 "{}",
                 match board.get(&(x, y)) {
                     Some(0) => ' ',

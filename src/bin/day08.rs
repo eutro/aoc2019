@@ -49,7 +49,7 @@ pub fn day_08() {
         .into_iter()
     {
         for pix in line {
-            print!("{}", if pix == 0 { ' ' } else { '#' });
+            io::print!("{}", if pix == 0 { ' ' } else { '#' });
         }
         io::println!();
     }
