@@ -11,15 +11,25 @@ pub(crate) use wasm_io::{println, print};
 #[allow(unused)]
 #[macro_use]
 mod wasm_io {
+    pub static mut SIDE_EFFECT: usize = 0;
+
     #[no_mangle]
+    #[inline(never)]
     pub extern "C" fn stdin_read_byte() -> i32 {
         // no-op, to replace
+        unsafe {
+            SIDE_EFFECT += 1;
+        }
         -1
     }
 
     #[no_mangle]
+    #[inline(never)]
     pub extern "C" fn stdout_write_byte(byte: i32) {
         // no-op, to replace
+        unsafe {
+            SIDE_EFFECT += 1;
+        }
     }
 
     use std::fmt::Debug;
