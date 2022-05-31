@@ -19,8 +19,8 @@ mod wasm_io {
         // no-op, to replace
         unsafe {
             SIDE_EFFECT += 1;
+            (SIDE_EFFECT % 128) as i32
         }
-        -1
     }
 
     #[no_mangle]
