@@ -13,23 +13,9 @@ pub(crate) use wasm_io::{println, print};
 mod wasm_io {
     pub static mut SIDE_EFFECT: usize = 0;
 
-    #[no_mangle]
-    #[inline(never)]
-    pub extern "C" fn stdin_read_byte() -> i32 {
-        // no-op, to replace
-        unsafe {
-            SIDE_EFFECT += 1;
-            (SIDE_EFFECT % 128) as i32
-        }
-    }
-
-    #[no_mangle]
-    #[inline(never)]
-    pub extern "C" fn stdout_write_byte(byte: i32) {
-        // no-op, to replace
-        unsafe {
-            SIDE_EFFECT += 1;
-        }
+    extern "C" {
+        fn stdin_read_byte() -> i32;
+        fn stdout_write_byte(byte: i32);
     }
 
     use std::fmt::Debug;
@@ -65,7 +51,7 @@ mod wasm_io {
 
     fn stdin_bytes() -> impl Iterator<Item = u8> {
         std::iter::from_fn(|| {
-            match stdin_read_byte() {
+            match unsafe { stdin_read_byte() } {
                 -1 => None,
                 b => Some(b as u8),
             }
@@ -100,7 +86,7 @@ mod wasm_io {
     impl Write for Stdout {
         fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
             for &b in buf {
-                stdout_write_byte(b as i32);
+                unsafe { stdout_write_byte(b as i32) };
             }
             Ok(buf.len())
         }
