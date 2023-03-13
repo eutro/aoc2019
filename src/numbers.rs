@@ -28,7 +28,7 @@ impl Iterator for DigitIterator {
 }
 
 pub struct ReverseDigitIterator {
-    number: u32
+    number: u32,
 }
 
 impl Iterator for ReverseDigitIterator {
@@ -70,7 +70,7 @@ impl DigitIterator {
             number: self.number,
             digit: 0,
             len,
-            radix: self.radix
+            radix: self.radix,
         }
     }
     pub fn with_radix(&self, radix: u8) -> DigitIterator {
@@ -78,7 +78,7 @@ impl DigitIterator {
             number: self.number,
             digit: 0,
             len: log_b(self.number as f32, radix as f32).ceil() as u8,
-            radix
+            radix,
         }
     }
 }

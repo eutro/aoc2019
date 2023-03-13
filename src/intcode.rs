@@ -1,6 +1,6 @@
+use crate::io::{self, stdin, BufRead};
 use std::collections::VecDeque;
 use std::fmt::{self, Debug, Formatter};
-use std::io::{self, BufRead, stdin};
 use std::num::ParseIntError;
 use std::str::FromStr;
 use std::vec::Vec;
@@ -24,7 +24,8 @@ impl Program {
     pub fn from_stdin() -> Result<Program, ParseProgramError> {
         let stdin = stdin();
         let mut line = String::new();
-        stdin.lock()
+        stdin
+            .lock()
             .read_line(&mut line)
             .map_err(|e| ParseProgramError::IOError(e))?;
         line.parse::<Program>()
@@ -42,7 +43,7 @@ impl Program {
                     Ok(State::Outputting(i)) => ret.push(i),
                     Ok(State::Finished) => return ret,
                     Ok(s) => panic!("Unexpected state: {:?}", s),
-                    Err(e) => panic!("{:?}", e)
+                    Err(e) => panic!("{:?}", e),
                 }
             }
         }
@@ -56,9 +57,10 @@ impl FromStr for Program {
         let instructions = s
             .trim()
             .split(',')
-            .map(|s| s
-                .parse::<Int>()
-                .map_err(|e| ParseProgramError::NotInteger(s.to_owned(), e)))
+            .map(|s| {
+                s.parse::<Int>()
+                    .map_err(|e| ParseProgramError::NotInteger(s.to_owned(), e))
+            })
             .collect::<Result<Vec<Int>, Self::Err>>()?;
         Ok(Program { instructions })
     }
@@ -119,7 +121,7 @@ impl Insn {
 
             99 => Insn::End,
 
-            i => return Err(Error::UnrecognisedOpcode(i))
+            i => return Err(Error::UnrecognisedOpcode(i)),
         })
     }
 }
@@ -138,7 +140,7 @@ impl Mode {
             1 => Mode::Immediate,
             2 => Mode::Relative,
 
-            d => return Err(Error::UnrecognisedMode(d))
+            d => return Err(Error::UnrecognisedMode(d)),
         })
     }
 }
@@ -163,22 +165,20 @@ impl VM {
 
     pub fn next_state(&mut self) -> ExecResult<State> {
         loop {
-            match self.advance()
-                .map_err(|error| ExecError {
-                    mem: self.mem.clone(),
-                    error,
-                    insn: self.insn - 1,
-                })? {
+            match self.advance().map_err(|error| ExecError {
+                mem: self.mem.clone(),
+                error,
+                insn: self.insn - 1,
+            })? {
                 None => (),
-                Some(state) => return Ok(state)
+                Some(state) => return Ok(state),
             }
         }
     }
 
     pub fn is_finished(&self) -> bool {
         self.peek()
-            .map(|o| Insn::of((o % 100) as u8)
-                .unwrap_or(Insn::End))
+            .map(|o| Insn::of((o % 100) as u8).unwrap_or(Insn::End))
             .unwrap_or(Insn::End)
             == Insn::End
     }
@@ -212,7 +212,7 @@ impl VM {
         }
     }
 
-    fn get<Iter: Iterator<Item=VMResult<Mode>>>(&mut self, modes: &mut Iter) -> VMResult<Int> {
+    fn get<Iter: Iterator<Item = VMResult<Mode>>>(&mut self, modes: &mut Iter) -> VMResult<Int> {
         let v = self.poll()?;
         Ok(match modes.next().unwrap()? {
             Mode::Position => {
@@ -234,7 +234,11 @@ impl VM {
         })
     }
 
-    fn set<Iter: Iterator<Item=VMResult<Mode>>>(&mut self, modes: &mut Iter, val: Int) -> VMResult<()> {
+    fn set<Iter: Iterator<Item = VMResult<Mode>>>(
+        &mut self,
+        modes: &mut Iter,
+        val: Int,
+    ) -> VMResult<()> {
         let v = self.poll()?;
         Ok(match modes.next().unwrap()? {
             Mode::Position => {
@@ -252,7 +256,7 @@ impl VM {
                 self.maybe_resize(t as usize);
                 self.mem[t as usize] = val;
             }
-            mode => return Err(Error::UnsupportedSet(mode))
+            mode => return Err(Error::UnsupportedSet(mode)),
         })
     }
 
@@ -266,10 +270,7 @@ impl VM {
     }
 
     fn advance(&mut self) -> VMResult<Option<State>> {
-        let modes =
-            &mut ((self.peek()? / 100) as u32)
-                .reverse_digits()
-                .map(Mode::of);
+        let modes = &mut ((self.peek()? / 100) as u32).reverse_digits().map(Mode::of);
         match Insn::of((self.poll()? % 100) as u8)? {
             Insn::Add => {
                 let sum = self.get(modes)? + self.get(modes)?;
@@ -341,15 +342,12 @@ fn format_mem(f: &mut Formatter, mem: &Vec<Int>, insn: usize) -> fmt::Result {
         .take(insn)
         .map(|v| write!(f, "{},", v))
         .collect::<fmt::Result>()?;
-    let mut iter = mem
-        .iter()
-        .skip(insn);
+    let mut iter = mem.iter().skip(insn);
     write!(f, "[")?;
     iter.next()
         .map(|val| write!(f, "{}],", val))
         .unwrap_or(Ok(()))?;
-    iter.map(|v| write!(f, "{},", v))
-        .collect::<fmt::Result>()?;
+    iter.map(|v| write!(f, "{},", v)).collect::<fmt::Result>()?;
     write!(f, "END")?;
     Ok(())
 }
@@ -376,8 +374,8 @@ impl Iterator for VM {
                 State::AwaitingInput => None,
                 State::Outputting(i) => Some(i),
                 State::Finished => None,
-            }
-            Err(_) => None
+            },
+            Err(_) => None,
         }
     }
 }
