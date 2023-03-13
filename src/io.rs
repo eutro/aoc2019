@@ -1,12 +1,12 @@
 #[cfg(not(feature = "wasm"))]
 pub use std::io::*;
 #[cfg(not(feature = "wasm"))]
-pub use std::{println, print};
+pub use std::{print, println};
 
 #[cfg(feature = "wasm")]
 pub use wasm_io::*;
 #[cfg(feature = "wasm")]
-pub(crate) use wasm_io::{println, print};
+pub(crate) use wasm_io::{print, println};
 
 #[allow(unused)]
 #[macro_use]
@@ -19,8 +19,8 @@ mod wasm_io {
     }
 
     use std::fmt::Debug;
-    pub use std::io::{Read, Write, BufRead, Error};
     use std::io::BufReader;
+    pub use std::io::{BufRead, Error, Read, Write};
 
     macro_rules! iprintln {
         ($($arg:tt)*) => {
@@ -34,8 +34,8 @@ mod wasm_io {
         };
     }
 
-    pub(crate) use iprintln as println;
     pub(crate) use iprint as print;
+    pub(crate) use iprintln as println;
 
     pub struct Stdin;
     pub struct Stdout;
@@ -50,11 +50,9 @@ mod wasm_io {
     }
 
     fn stdin_bytes() -> impl Iterator<Item = u8> {
-        std::iter::from_fn(|| {
-            match unsafe { stdin_read_byte() } {
-                -1 => None,
-                b => Some(b as u8),
-            }
+        std::iter::from_fn(|| match unsafe { stdin_read_byte() } {
+            -1 => None,
+            b => Some(b as u8),
         })
     }
 
